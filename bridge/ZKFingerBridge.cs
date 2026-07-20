@@ -102,6 +102,15 @@ public class BridgeForm : Form {
 
     [STAThread]
     public static void Main() {
+        // Force TLS 1.2 / TLS 1.1 / TLS 1.0 support for HTTPS requests
+        try {
+            System.Net.ServicePointManager.SecurityProtocol = 
+                System.Net.SecurityProtocolType.Tls12 | 
+                System.Net.SecurityProtocolType.Tls11 | 
+                System.Net.SecurityProtocolType.Tls;
+            System.Net.ServicePointManager.ServerCertificateValidationCallback = (sender, cert, chain, sslPolicyErrors) => true;
+        } catch {}
+
         // Prevent duplicate instances
         bool createdNew;
         using (var mutex = new Mutex(true, "Global\\ZKFingerBridge_SingleInstance", out createdNew)) {
