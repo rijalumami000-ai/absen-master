@@ -13,6 +13,7 @@ class AcademicYear(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False, unique=True)
     is_active = Column(Boolean, default=False)
+    sekolah_info_year_id = Column(Integer, unique=True, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     santri_list = relationship("Santri", back_populates="academic_year")
@@ -30,6 +31,9 @@ class Santri(Base):
     fingerprint_id = Column(String(50), unique=True, nullable=True)
     fingerprint_template = Column(Text, nullable=True)
     academic_year_id = Column(Integer, ForeignKey("academic_years.id", ondelete="SET NULL"), nullable=True)
+    sekolah_info_santri_id = Column(Integer, unique=True, nullable=True)
+    mother_name = Column(String(150), nullable=True)
+    photo_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     academic_year = relationship("AcademicYear", back_populates="santri_list")

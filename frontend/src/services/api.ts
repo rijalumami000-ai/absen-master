@@ -19,11 +19,21 @@ export const academicYearService = {
 export const santriService = {
   getAll: (filters?: { gender?: string; room?: string; academic_year_id?: number }) => 
     api.get('/api/santri', { params: filters }).then(r => r.data),
-  create: (data: { name: string; gender: string; room: string; parent_phone: string; academic_year_id?: number }) => 
+  create: (data: { name: string; gender: string; room: string; parent_phone: string; academic_year_id?: number; mother_name?: string; photo_url?: string }) => 
     api.post('/api/santri', data).then(r => r.data),
   update: (id: number, data: any) => api.put(`/api/santri/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/api/santri/${id}`).then(r => r.data),
   getRooms: () => api.get('/api/santri/rooms').then(r => r.data),
+  syncSekolahInfo: () => api.post('/api/santri/sync-sekolah-info').then(r => r.data),
+  uploadPhoto: (id: number, file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post(`/api/santri/${id}/upload-photo`, fd, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }).then(r => r.data);
+  }
 };
 
 export const fingerprintService = {

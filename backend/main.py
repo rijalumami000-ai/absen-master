@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from .database import init_db
 from .routers import academic_years, santri, fingerprint, attendance, rekap, whatsapp, settings
+import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -17,8 +19,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Setup static files directory
+os.makedirs("backend/static/uploads", exist_ok=True)
+app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+
+# Mount sekolah-info public upload files directly
+sekolah_info_public = "d:/source/sekolah-info/public"
+if os.path.exists(sekolah_info_public):
+    app.mount("/sekolah-info-static", StaticFiles(directory=sekolah_info_public), name="sekolah-info-static")
+
 # Setup CORS agar frontend React (Vite) dapat mengakses API
-import os
 cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://absen.alhamidcintamulya.my.id,https://absen.alhamidcintamulya.my.id")
 origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
 

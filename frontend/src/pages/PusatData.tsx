@@ -5,23 +5,16 @@ import {
   Trash2, 
   Edit3, 
   Fingerprint, 
-  Info,
-  Calendar, 
-  Users,
-  Search,
-  Filter,
-  CheckCircle,
-  XCircle,
-  AlertTriangle
+  Users, 
+  Search, 
+  CheckCircle, 
+  User
 } from 'lucide-react';
 import { academicYearService, santriService, fingerprintService, attendanceService } from '../services/api';
 
 export const PusatData: React.FC = () => {
-  const [activeSubTab, setActiveSubTab] = useState<'santri' | 'tahun'>('santri');
-
   // Academic Year State
   const [years, setYears] = useState<any[]>([]);
-  const [newYearName, setNewYearName] = useState('');
   
   // Santri State
   const [santriList, setSantriList] = useState<any[]>([]);
@@ -39,7 +32,11 @@ export const PusatData: React.FC = () => {
     room: '',
     parent_phone: '',
     academic_year_id: '',
+    mother_name: '',
+    photo_url: '',
+    sekolah_info_santri_id: null as number | null,
   });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   // Fingerprint Registration Modal
   const [enrollModal, setEnrollModal] = useState<{ isOpen: boolean; santriId?: number; name?: string; status: 'waiting' | 'success' | 'failed' }>({
@@ -111,49 +108,10 @@ export const PusatData: React.FC = () => {
     return () => eventSource.close();
   }, [enrollModal.isOpen, enrollModal.santriId]);
 
-  // Academic Year Handlers
-  const handleAddYear = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newYearName.trim()) return;
-    try {
-      await academicYearService.create(newYearName);
-      setNewYearName('');
-      loadAcademicYears();
-    } catch (err: any) {
-      if (!err.response) {
-        alert("Gagal menambah tahun ajaran: Tidak dapat terhubung ke server Backend. Pastikan server backend sudah dijalankan di port 8000!");
-      } else {
-        alert(err.response.data?.detail || "Gagal menambah tahun ajaran");
-      }
-    }
-  };
-
-  const handleActivateYear = async (id: number) => {
-    try {
-      await academicYearService.activate(id);
-      loadAcademicYears();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleDeleteYear = async (id: number) => {
-    if (!window.confirm("Hapus tahun ajaran ini?")) return;
-    try {
-      await academicYearService.delete(id);
-      loadAcademicYears();
-    } catch (err: any) {
-      if (!err.response) {
-        alert("Gagal menghapus tahun ajaran: Tidak dapat terhubung ke server Backend. Pastikan server backend sudah dijalankan!");
-      } else {
-        alert(err.response.data?.detail || "Gagal menghapus tahun ajaran");
-      }
-    }
-  };
-
   // Santri Handlers
   const handleOpenAddForm = () => {
     setEditingId(null);
+    setPhotoFile(null);
     const activeYear = years.find(y => y.is_active)?.id || '';
     setFormData({
       name: '',
@@ -161,18 +119,25 @@ export const PusatData: React.FC = () => {
       room: '',
       parent_phone: '',
       academic_year_id: String(activeYear),
+      mother_name: '',
+      photo_url: '',
+      sekolah_info_santri_id: null,
     });
     setIsFormOpen(true);
   };
 
   const handleOpenEditForm = (santri: any) => {
     setEditingId(santri.id);
+    setPhotoFile(null);
     setFormData({
       name: santri.name,
       gender: santri.gender,
       room: santri.room,
       parent_phone: santri.parent_phone,
       academic_year_id: String(santri.academic_year_id || ''),
+      mother_name: santri.mother_name || '',
+      photo_url: santri.photo_url || '',
+      sekolah_info_santri_id: santri.sekolah_info_santri_id || null,
     });
     setIsFormOpen(true);
   };
@@ -184,12 +149,21 @@ export const PusatData: React.FC = () => {
         ...formData,
         academic_year_id: formData.academic_year_id ? Number(formData.academic_year_id) : undefined
       };
+      
+      let savedSantri;
       if (editingId) {
-        await santriService.update(editingId, payload);
+        savedSantri = await santriService.update(editingId, payload);
       } else {
-        await santriService.create(payload as any);
+        savedSantri = await santriService.create(payload as any);
       }
+
+      // If photo file is selected for upload, proceed with upload
+      if (photoFile && savedSantri && savedSantri.id) {
+        await santriService.uploadPhoto(savedSantri.id, photoFile);
+      }
+
       setIsFormOpen(false);
+      setPhotoFile(null);
       loadSantri();
       loadRooms();
     } catch (err: any) {
@@ -245,6 +219,18 @@ export const PusatData: React.FC = () => {
     s.room.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Helper to resolve student photo url dynamically
+  const getPhotoUrl = (s: any) => {
+    if (!s.photo_url) return null;
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    if (s.sekolah_info_santri_id) {
+      // Served by school-info mounted directory on fastapi
+      return `${base}/sekolah-info-static${s.photo_url}`;
+    }
+    // Served locally by uploads static folder
+    return `${base}${s.photo_url}`;
+  };
+
   return (
     <div className="animate-slide">
       <div className="page-header">
@@ -252,191 +238,125 @@ export const PusatData: React.FC = () => {
           <h1>Pusat Data</h1>
           <p>Kelola data santri, konfigurasi tahun ajaran aktif, dan registrasi biometrik sidik jari.</p>
         </div>
-        
-        <div style={{ display: 'flex', gap: '8px', backgroundColor: '#e2e8f0', padding: '4px', borderRadius: '8px' }}>
-          <button 
-            className="btn" 
-            style={{ 
-              padding: '6px 12px', 
-              fontSize: '13px', 
-              backgroundColor: activeSubTab === 'santri' ? 'white' : 'transparent',
-              color: activeSubTab === 'santri' ? 'var(--text-main)' : 'var(--text-muted)',
-              boxShadow: activeSubTab === 'santri' ? 'var(--shadow-sm)' : 'none',
-            }}
-            onClick={() => setActiveSubTab('santri')}
-          >
-            <Users size={16} />
-            Data Santri
-          </button>
-          <button 
-            className="btn" 
-            style={{ 
-              padding: '6px 12px', 
-              fontSize: '13px', 
-              backgroundColor: activeSubTab === 'tahun' ? 'white' : 'transparent',
-              color: activeSubTab === 'tahun' ? 'var(--text-main)' : 'var(--text-muted)',
-              boxShadow: activeSubTab === 'tahun' ? 'var(--shadow-sm)' : 'none',
-            }}
-            onClick={() => setActiveSubTab('tahun')}
-          >
-            <Calendar size={16} />
-            Tahun Ajaran
-          </button>
-        </div>
       </div>
 
-      {activeSubTab === 'tahun' ? (
-        <div className="grid-2">
-          {/* Add Year */}
-          <div className="card">
-            <h3 className="card-title">
-              <Calendar size={18} color="var(--accent-primary)" />
-              Tambah Tahun Ajaran Baru
-            </h3>
-            <form onSubmit={handleAddYear} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div className="form-group">
-                <label className="form-label">Nama Tahun Ajaran</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Contoh: 2025/2026"
-                  value={newYearName}
-                  onChange={(e) => setNewYearName(e.target.value)}
-                  required
-                />
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                <Plus size={16} />
-                Tambah Tahun Ajaran
-              </button>
-            </form>
+      {/* Santri Management Card */}
+      <div className="card" style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: '300px' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                className="form-control" 
+                placeholder="Cari nama atau kamar santri..." 
+                style={{ paddingLeft: '36px' }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            
+            <select 
+              className="form-control" 
+              style={{ width: '130px' }}
+              value={selectedGenderFilter}
+              onChange={(e) => setSelectedGenderFilter(e.target.value)}
+            >
+              <option value="">Semua Gender</option>
+              <option value="Putra">Putra</option>
+              <option value="Putri">Putri</option>
+            </select>
+
+            <select 
+              className="form-control" 
+              style={{ width: '140px' }}
+              value={selectedRoomFilter}
+              onChange={(e) => setSelectedRoomFilter(e.target.value)}
+            >
+              <option value="">Semua Kamar</option>
+              {rooms.map(room => (
+                <option key={room} value={room}>{room}</option>
+              ))}
+            </select>
           </div>
 
-          {/* List Years */}
-          <div className="card">
-            <h3 className="card-title">Daftar Tahun Ajaran</h3>
-            <div className="table-container">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Tahun Ajaran</th>
-                    <th>Status</th>
-                    <th>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {years.map((y) => (
-                    <tr key={y.id}>
-                      <td style={{ fontWeight: 600 }}>Tahun Ajaran {y.name}</td>
-                      <td>
-                        {y.is_active ? (
-                          <span className="badge badge-hadir">Aktif</span>
-                        ) : (
-                          <span className="badge badge-istihadhoh">Inaktif</span>
-                        )}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          {!y.is_active && (
-                            <button 
-                              onClick={() => handleActivateYear(y.id)} 
-                              className="btn btn-primary" 
-                              style={{ padding: '4px 10px', fontSize: '12px' }}
-                            >
-                              Aktifkan
-                            </button>
-                          )}
-                          {!y.is_active && (
-                            <button 
-                              onClick={() => handleDeleteYear(y.id)} 
-                              className="btn btn-danger" 
-                              style={{ padding: '4px 6px', display: 'flex', alignItems: 'center' }}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Santri Management Tab */
-        <div className="card" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: '300px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  placeholder="Cari nama atau kamar santri..." 
-                  style={{ paddingLeft: '36px' }}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              
-              <select 
-                className="form-control" 
-                style={{ width: '130px' }}
-                value={selectedGenderFilter}
-                onChange={(e) => setSelectedGenderFilter(e.target.value)}
-              >
-                <option value="">Semua Gender</option>
-                <option value="Putra">Putra</option>
-                <option value="Putri">Putri</option>
-              </select>
-
-              <select 
-                className="form-control" 
-                style={{ width: '140px' }}
-                value={selectedRoomFilter}
-                onChange={(e) => setSelectedRoomFilter(e.target.value)}
-              >
-                <option value="">Semua Kamar</option>
-                {rooms.map(room => (
-                  <option key={room} value={room}>{room}</option>
-                ))}
-              </select>
-            </div>
-
+          <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={handleOpenAddForm} className="btn btn-primary">
               <Plus size={16} />
               Tambah Santri
             </button>
           </div>
+        </div>
 
-          <div className="table-container">
-            <table className="table">
-              <thead>
+        <div className="table-container">
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: '60px' }}>Foto</th>
+                <th>Nama Lengkap</th>
+                <th>Gender</th>
+                <th>Kamar</th>
+                <th>Nama Ibu</th>
+                <th>WhatsApp Wali</th>
+                <th>Sidik Jari</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredSantri.length === 0 ? (
                 <tr>
-                  <th>Nama Lengkap</th>
-                  <th>Gender</th>
-                  <th>Kamar</th>
-                  <th>WhatsApp Wali</th>
-                  <th>Sidik Jari</th>
-                  <th>Aksi</th>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                    Tidak ada data santri ditemukan.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredSantri.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                      Tidak ada data santri ditemukan.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredSantri.map((s) => (
+              ) : (
+                filteredSantri.map((s) => {
+                  const studentPhoto = getPhotoUrl(s);
+                  return (
                     <tr key={s.id}>
-                      <td style={{ fontWeight: 600 }}>{s.name}</td>
+                      {/* Student Photo */}
+                      <td>
+                        {studentPhoto ? (
+                          <img 
+                            src={studentPhoto} 
+                            alt={s.name} 
+                            style={{ 
+                              width: '36px', 
+                              height: '36px', 
+                              borderRadius: '50%', 
+                              objectFit: 'cover',
+                              border: '2px solid rgba(0,0,0,0.06)'
+                            }}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '';
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div style={{ 
+                            width: '36px', 
+                            height: '36px', 
+                            borderRadius: '50%', 
+                            backgroundColor: '#e2e8f0', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            color: '#64748b',
+                            border: '1.5px dashed #cbd5e1'
+                          }}>
+                            <User size={16} />
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Name */}
+                      <td>
+                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{s.name}</span>
+                      </td>
                       <td>{s.gender}</td>
                       <td>{s.room}</td>
-                      <td>{s.parent_phone}</td>
+                      <td>{s.mother_name || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>-</span>}</td>
+                      <td>{s.parent_phone || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>-</span>}</td>
                       <td>
                         {s.has_fingerprint ? (
                           <span className="badge badge-hadir">
@@ -465,30 +385,36 @@ export const PusatData: React.FC = () => {
                             <Fingerprint size={14} />
                             Daftar Jari
                           </button>
-                          <button 
-                            onClick={() => handleOpenEditForm(s)} 
-                            className="btn btn-secondary" 
-                            style={{ padding: '6px' }}
-                          >
-                            <Edit3 size={14} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteSantri(s.id, s.name)} 
-                            className="btn btn-danger" 
-                            style={{ padding: '6px' }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          
+                          {/* Show edit and delete actions only for manually added students */}
+                          {!s.sekolah_info_santri_id && (
+                            <>
+                              <button 
+                                onClick={() => handleOpenEditForm(s)} 
+                                className="btn btn-secondary" 
+                                style={{ padding: '6px' }}
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteSantri(s.id, s.name)} 
+                                className="btn btn-danger" 
+                                style={{ padding: '6px' }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
       {/* Santri Add/Edit Drawer/Modal */}
       {isFormOpen && createPortal(
@@ -498,6 +424,7 @@ export const PusatData: React.FC = () => {
               <Users size={20} color="var(--accent-primary)" />
               {editingId ? 'Edit Data Santri' : 'Tambah Santri Baru'}
             </h3>
+            
             <form onSubmit={handleSaveSantri}>
               <div className="form-group">
                 <label className="form-label">Nama Lengkap</label>
@@ -507,6 +434,7 @@ export const PusatData: React.FC = () => {
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   required
+                  disabled={!!formData.sekolah_info_santri_id} // Disable name edit if synced
                 />
               </div>
 
@@ -517,6 +445,7 @@ export const PusatData: React.FC = () => {
                   value={formData.gender}
                   onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
                   required
+                  disabled={!!formData.sekolah_info_santri_id}
                 >
                   <option value="Putra">Putra</option>
                   <option value="Putri">Putri</option>
@@ -536,7 +465,18 @@ export const PusatData: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">WhatsApp Wali Santri</label>
+                <label className="form-label">Nama Ibu Kandung</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Contoh: Siti Aminah"
+                  value={formData.mother_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, mother_name: e.target.value }))}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">WhatsApp Wali Santri / Nomor Ibu</label>
                 <input
                   type="text"
                   className="form-control"
@@ -545,6 +485,30 @@ export const PusatData: React.FC = () => {
                   onChange={(e) => setFormData(prev => ({ ...prev, parent_phone: e.target.value }))}
                   required
                 />
+              </div>
+
+              {/* Photo upload field for manual santri */}
+              <div className="form-group">
+                <label className="form-label">Upload Foto Santri</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="form-control"
+                  onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                />
+                <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Format yang didukung: JPG, PNG, WEBP. Maks 2MB.
+                </p>
+                {formData.photo_url && (
+                  <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <img 
+                      src={getPhotoUrl(formData) || ''} 
+                      alt="Santri Preview" 
+                      style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #cbd5e1' }}
+                    />
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Foto saat ini</span>
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
@@ -642,6 +606,8 @@ const modalContentStyle: React.CSSProperties = {
   padding: '32px',
   boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
   border: '1px solid #e2e8f0',
+  maxHeight: '90vh',
+  overflowY: 'auto',
 };
 
 const enrollModalContentStyle: React.CSSProperties = {

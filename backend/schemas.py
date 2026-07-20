@@ -22,6 +22,8 @@ class SantriCreate(BaseModel):
     room: str
     parent_phone: str
     academic_year_id: Optional[int] = None
+    mother_name: Optional[str] = None
+    photo_url: Optional[str] = None
 
 class SantriUpdate(BaseModel):
     name: Optional[str] = None
@@ -29,6 +31,8 @@ class SantriUpdate(BaseModel):
     room: Optional[str] = None
     parent_phone: Optional[str] = None
     academic_year_id: Optional[int] = None
+    mother_name: Optional[str] = None
+    photo_url: Optional[str] = None
 
 class SantriOut(BaseModel):
     id: int
@@ -39,6 +43,9 @@ class SantriOut(BaseModel):
     fingerprint_id: Optional[str] = None
     has_fingerprint: bool = False
     academic_year_id: Optional[int] = None
+    sekolah_info_santri_id: Optional[int] = None
+    mother_name: Optional[str] = None
+    photo_url: Optional[str] = None
     class Config:
         from_attributes = True
 
