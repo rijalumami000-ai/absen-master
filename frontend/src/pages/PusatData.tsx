@@ -8,13 +8,15 @@ import {
   Users, 
   Search, 
   CheckCircle, 
-  User
+  User,
+  Calendar
 } from 'lucide-react';
 import { academicYearService, santriService, fingerprintService, attendanceService } from '../services/api';
 
 export const PusatData: React.FC = () => {
   // Academic Year State
   const [years, setYears] = useState<any[]>([]);
+  const [selectedYearFilter, setSelectedYearFilter] = useState('');
   
   // Santri State
   const [santriList, setSantriList] = useState<any[]>([]);
@@ -49,6 +51,11 @@ export const PusatData: React.FC = () => {
     try {
       const data = await academicYearService.getAll();
       setYears(data);
+      // Set active year as the default filter
+      const activeYear = data.find((y: any) => y.is_active);
+      if (activeYear) {
+        setSelectedYearFilter(String(activeYear.id));
+      }
     } catch (err) {
       console.error(err);
     }
@@ -56,11 +63,10 @@ export const PusatData: React.FC = () => {
 
   const loadSantri = async () => {
     try {
-      const activeYear = years.find(y => y.is_active)?.id;
       const data = await santriService.getAll({
         gender: selectedGenderFilter || undefined,
         room: selectedRoomFilter || undefined,
-        academic_year_id: activeYear
+        academic_year_id: selectedYearFilter ? Number(selectedYearFilter) : undefined
       });
       setSantriList(data);
     } catch (err) {
@@ -86,7 +92,7 @@ export const PusatData: React.FC = () => {
     if (years.length > 0) {
       loadSantri();
     }
-  }, [years, selectedRoomFilter, selectedGenderFilter]);
+  }, [years, selectedRoomFilter, selectedGenderFilter, selectedYearFilter]);
 
   // SSE Listener for Enrollment
   useEffect(() => {
@@ -112,13 +118,18 @@ export const PusatData: React.FC = () => {
   const handleOpenAddForm = () => {
     setEditingId(null);
     setPhotoFile(null);
-    const activeYear = years.find(y => y.is_active)?.id || '';
+    // Default to the currently selected year in the filter, fallback to active year
+    let initialYearId = selectedYearFilter;
+    if (!initialYearId) {
+      const activeYear = years.find(y => y.is_active);
+      initialYearId = activeYear ? String(activeYear.id) : '';
+    }
     setFormData({
       name: '',
       gender: 'Putra',
       room: '',
       parent_phone: '',
-      academic_year_id: String(activeYear),
+      academic_year_id: initialYearId,
       mother_name: '',
       photo_url: '',
       sekolah_info_santri_id: null,
@@ -222,7 +233,7 @@ export const PusatData: React.FC = () => {
   // Helper to resolve student photo url dynamically
   const getPhotoUrl = (s: any) => {
     if (!s.photo_url) return null;
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const base = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
     if (s.sekolah_info_santri_id) {
       // Served by school-info mounted directory on fastapi
       return `${base}/sekolah-info-static${s.photo_url}`;
@@ -278,6 +289,21 @@ export const PusatData: React.FC = () => {
                 <option key={room} value={room}>{room}</option>
               ))}
             </select>
+
+            {/* Academic Year Filter Dropdown */}
+            <select 
+              className="form-control" 
+              style={{ width: '180px' }}
+              value={selectedYearFilter}
+              onChange={(e) => setSelectedYearFilter(e.target.value)}
+            >
+              <option value="">Semua Tahun Ajaran</option>
+              {years.map(yr => (
+                <option key={yr.id} value={yr.id}>
+                  Tahun {yr.name} {yr.is_active ? '(Aktif)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -328,8 +354,10 @@ export const PusatData: React.FC = () => {
                               border: '2px solid rgba(0,0,0,0.06)'
                             }}
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = '';
-                              (e.target as HTMLImageElement).style.display = 'none';
+                              // Prevent infinite loop and set a stable fallback user SVG
+                              const target = e.target as HTMLImageElement;
+                              target.onerror = null; 
+                              target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="%2364748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
                             }}
                           />
                         ) : (

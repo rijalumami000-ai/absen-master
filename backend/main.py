@@ -24,7 +24,12 @@ os.makedirs("backend/static/uploads", exist_ok=True)
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 
 # Mount sekolah-info public upload files directly
-sekolah_info_public = "d:/source/sekolah-info/public"
+sekolah_info_public = os.getenv("SEKOLAH_INFO_PUBLIC_DIR", "d:/source/sekolah-info/public")
+if not os.path.exists(sekolah_info_public):
+    # Fallback to VPS Ubuntu path
+    if os.path.exists("/var/www/sekolah-info/public"):
+        sekolah_info_public = "/var/www/sekolah-info/public"
+
 if os.path.exists(sekolah_info_public):
     app.mount("/sekolah-info-static", StaticFiles(directory=sekolah_info_public), name="sekolah-info-static")
 
