@@ -57,24 +57,26 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
     sse.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        if (payload.type === 'bridge_status_update') {
+        if (payload && payload.type === 'bridge_status_update') {
           setData(prev => {
             const currentLogs = Array.isArray(prev?.logs) ? prev.logs : [];
-            const newLog = payload.data.latest_log;
+            const newLog = payload.latest_log;
             const updatedLogs = newLog 
               ? [...currentLogs.filter(l => l !== newLog), newLog].slice(-40)
               : currentLogs;
             return {
               ...prev,
-              mode: payload.data.mode || 'verify',
-              status: payload.data.status || 'offline',
-              sensor_sn: payload.data.sensor_sn || '-',
-              templates_count: payload.data.templates_count || 0,
+              mode: payload.mode || prev?.mode || 'verify',
+              status: payload.status || prev?.status || 'offline',
+              sensor_sn: payload.sensor_sn || prev?.sensor_sn || '-',
+              templates_count: typeof payload.templates_count === 'number' ? payload.templates_count : (prev?.templates_count || 0),
               logs: updatedLogs
             };
           });
         }
-      } catch (err) {}
+      } catch (err) {
+        console.error('Error handling SSE bridge update:', err);
+      }
     };
 
     return () => {

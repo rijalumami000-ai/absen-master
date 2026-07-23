@@ -107,12 +107,12 @@ export const PusatData: React.FC = () => {
       try {
         const data = JSON.parse(event.data);
 
-        if (data.type === 'bridge_status_update') {
-          const samples = data.data?.enroll_samples;
+        if (data && data.type === 'bridge_status_update') {
+          const samples = data.enroll_samples;
           if (typeof samples === 'number' && samples >= 0) {
             setEnrollStep(samples);
           }
-          const logMsg = data.data?.latest_log || '';
+          const logMsg = data.latest_log || '';
           if (logMsg) {
             setEnrollLogs(prev => {
               const safeLogs = Array.isArray(prev) ? prev : [];
