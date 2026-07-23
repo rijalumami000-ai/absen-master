@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ZK9500 / ZK6500 / standard ZKTeco USB fingerprint scanners -->
+    <usb-device vendor-id="6997" product-id="289" />
+</resources>

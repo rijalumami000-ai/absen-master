@@ -122,6 +122,28 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
 
         {/* Scrollable Body */}
         <div style={styles.body}>
+
+          {/* Launch App Banner if Offline */}
+          {!isOnline && (
+            <div style={styles.launchBanner}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={styles.launchIcon}>
+                  <Fingerprint size={22} color="#ffffff" />
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontWeight: 700, fontSize: '13px', color: '#1e1b4b' }}>Aplikasi Bridge Windows Offline</div>
+                  <div style={{ fontSize: '11px', color: '#4338ca' }}>Aktifkan aplikasi Bridge di Windows secara otomatis tanpa membuka folder manual.</div>
+                </div>
+              </div>
+              <button 
+                onClick={() => { window.location.href = 'zkfingerbridge://launch'; }}
+                style={styles.launchBtn}
+                title="Buka ZKFinger Bridge Windows"
+              >
+                🚀 Buka / Aktifkan Bridge
+              </button>
+            </div>
+          )}
           
           {/* Status Cards */}
           <div style={styles.gridCards}>
@@ -458,5 +480,39 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     fontSize: '13px',
     cursor: 'pointer'
+  },
+  launchBanner: {
+    backgroundColor: '#e0e7ff',
+    border: '1px solid #c7d2fe',
+    borderRadius: '14px',
+    padding: '14px 18px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '16px',
+    gap: '12px',
+    flexWrap: 'wrap'
+  },
+  launchIcon: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '10px',
+    backgroundColor: '#4f46e5',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  },
+  launchBtn: {
+    backgroundColor: '#4f46e5',
+    color: '#ffffff',
+    border: 'none',
+    padding: '10px 16px',
+    borderRadius: '10px',
+    fontWeight: 700,
+    fontSize: '12px',
+    cursor: 'pointer',
+    boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.3)',
+    whiteSpace: 'nowrap'
   }
 };

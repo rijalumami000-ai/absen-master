@@ -47,6 +47,8 @@ export const PusatData: React.FC = () => {
     isOpen: false,
     status: 'waiting'
   });
+  const [enrollStep, setEnrollStep] = useState<number>(0); // 0, 1, 2, 3
+  const [enrollLogs, setEnrollLogs] = useState<string[]>([]);
 
   // Load Initial Data
   const loadAcademicYears = async () => {
@@ -96,7 +98,7 @@ export const PusatData: React.FC = () => {
     }
   }, [years, selectedRoomFilter, selectedGenderFilter, selectedYearFilter]);
 
-  // SSE Listener for Enrollment
+  // SSE Listener for Enrollment Steps & Realtime Logs
   useEffect(() => {
     if (!enrollModal.isOpen) return;
 
@@ -104,7 +106,23 @@ export const PusatData: React.FC = () => {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+
+        if (data.type === 'bridge_status_update') {
+          const logMsg = data.data.latest_log || '';
+          if (logMsg) {
+            setEnrollLogs(prev => [...prev.filter(l => l !== logMsg), logMsg].slice(-15));
+          }
+          if (logMsg.includes('Tempel Jari ke-1')) {
+            setEnrollStep(1);
+          } else if (logMsg.includes('Tempel Jari ke-2')) {
+            setEnrollStep(2);
+          } else if (logMsg.includes('Tempel Jari ke-3') || logMsg.includes('SUKSES!')) {
+            setEnrollStep(3);
+          }
+        }
+
         if (data.type === 'enroll_success' && data.santri_id === enrollModal.santriId) {
+          setEnrollStep(3);
           setEnrollModal(prev => ({ ...prev, status: 'success' }));
           loadSantri(); // Refresh table
         }
@@ -203,6 +221,8 @@ export const PusatData: React.FC = () => {
   const handleStartEnroll = async (id: number, name: string) => {
     try {
       await fingerprintService.startEnroll(id);
+      setEnrollStep(0);
+      setEnrollLogs([]);
       setEnrollModal({
         isOpen: true,
         santriId: id,
@@ -613,17 +633,77 @@ export const PusatData: React.FC = () => {
       {/* Fingerprint Enrollment Progress Modal */}
       {enrollModal.isOpen && createPortal(
         <div style={modalOverlayStyle}>
-          <div style={enrollModalContentStyle} className="animate-slide">
+          <div style={{ ...enrollModalContentStyle, width: '440px' }} className="animate-slide">
             {enrollModal.status === 'waiting' && (
               <>
                 <div style={enrollGlowStyle} className="pulse-icon">
                   <Fingerprint size={48} color="#d946ef" />
                 </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, marginTop: '20px' }}>Menunggu Sidik Jari</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '8px', lineHeight: '1.5' }}>
-                  Silakan tempelkan jari santri <strong style={{ color: '#0f172a' }}>{enrollModal.name}</strong> sebanyak 3 kali di alat pemindai sidik jari.
+                <h3 style={{ fontSize: '18px', fontWeight: 700, marginTop: '16px' }}>Menunggu Sidik Jari</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '6px', lineHeight: '1.5' }}>
+                  Silakan tempelkan jari santri <strong style={{ color: '#0f172a' }}>{enrollModal.name}</strong> sebanyak 3 kali di alat pemindai.
                 </p>
-                <div style={{ marginTop: '24px', width: '100%' }}>
+
+                {/* 3 Touch Step Circles */}
+                <div style={{ display: 'flex', justifyContent: 'space-around', width: '100%', marginTop: '20px', gap: '10px' }}>
+                  {[1, 2, 3].map((stepNum) => {
+                    const isDone = enrollStep >= stepNum;
+                    const isCurrent = enrollStep === stepNum - 1;
+                    return (
+                      <div 
+                        key={stepNum}
+                        style={{
+                          flex: 1,
+                          padding: '10px 8px',
+                          borderRadius: '12px',
+                          backgroundColor: isDone ? '#d1fae5' : isCurrent ? '#fae8ff' : '#f1f5f9',
+                          border: `1px solid ${isDone ? '#a7f3d0' : isCurrent ? '#f0abfc' : '#e2e8f0'}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: isDone ? '#065f46' : isCurrent ? '#86198f' : '#64748b' }}>
+                          Jari ke-{stepNum}
+                        </span>
+                        <span style={{ fontSize: '10px', fontWeight: 600, color: isDone ? '#047857' : isCurrent ? '#c026d3' : '#94a3b8' }}>
+                          {isDone ? '✓ Sukses' : isCurrent ? '⏳ Tempel' : 'Belum'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Mini Realtime Log Console */}
+                <div style={{
+                  width: '100%',
+                  marginTop: '16px',
+                  backgroundColor: '#0f172a',
+                  color: '#e2e8f0',
+                  fontFamily: 'monospace',
+                  fontSize: '11px',
+                  padding: '10px',
+                  borderRadius: '10px',
+                  height: '90px',
+                  overflowY: 'auto',
+                  textAlign: 'left'
+                }}>
+                  {enrollLogs.length === 0 ? (
+                    <div style={{ color: '#64748b', fontStyle: 'italic', textAlign: 'center', paddingTop: '24px' }}>
+                      Mendengarkan event dari sensor...
+                    </div>
+                  ) : (
+                    enrollLogs.map((log, idx) => (
+                      <div key={idx} style={{ padding: '1px 0' }}>
+                        <span style={{ color: '#10b981' }}>&gt; </span>
+                        <span>{log}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div style={{ marginTop: '20px', width: '100%' }}>
                   <button onClick={handleCancelEnroll} className="btn btn-secondary" style={{ width: '100%' }}>
                     Batal / Hentikan
                   </button>

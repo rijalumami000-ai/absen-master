@@ -142,6 +142,7 @@ public class BridgeForm : Form {
 
         LoadConfig();
         SetupSystemTray();
+        RegisterProtocolHandler();
         BuildUI();
 
         this.Load += (s, e) => {
@@ -272,6 +273,22 @@ public class BridgeForm : Form {
         } catch (Exception ex) {
             Log("Gagal menonaktifkan auto-start: " + ex.Message);
         }
+    }
+
+    private void RegisterProtocolHandler() {
+        try {
+            string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Classes\zkfingerbridge")) {
+                key.SetValue("", "URL:ZKFingerBridge Protocol");
+                key.SetValue("URL Protocol", "");
+                using (RegistryKey defaultIcon = key.CreateSubKey("DefaultIcon")) {
+                    defaultIcon.SetValue("", "\"" + exePath + "\",1");
+                }
+                using (RegistryKey commandKey = key.CreateSubKey(@"shell\open\command")) {
+                    commandKey.SetValue("", "\"" + exePath + "\" \"%1\"");
+                }
+            }
+        } catch {}
     }
 
     // =============================
