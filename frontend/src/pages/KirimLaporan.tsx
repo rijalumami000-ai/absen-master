@@ -459,8 +459,6 @@ export const KirimLaporan: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
       <AlertModal 
         isOpen={alertState.isOpen} 
         type={alertState.type} 
