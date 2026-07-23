@@ -387,41 +387,131 @@ export const RekapAbsensi: React.FC = () => {
         )}
       </div>
 
-      {/* Print Styles */}
-      <style>{`
-        @media print {
-          .no-print {
-            display: none !important;
-          }
-          body {
-            background-color: white !important;
-            color: black !important;
-            padding: 0 !important;
-          }
-          .main-content {
-            padding: 0 !important;
-            height: auto !important;
-            overflow: visible !important;
-          }
-          .card {
-            border: none !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            margin-bottom: 30px !important;
-          }
-          .table-container {
-            border: none !important;
-          }
-          .table th {
-            background-color: #f1f5f9 !important;
-            color: black !important;
-            border-bottom: 2px solid black !important;
-          }
-          .table td {
-            border-bottom: 1px solid #e2e8f0 !important;
-          }
-        }
-      `}</style>
+      {/* Formal Custom Print Document (Only Visible on Print) */}
+      <div className="print-only" style={{ padding: '10px 0', color: '#000' }}>
+        {/* Kop Surat Pesantren */}
+        <div style={{ textAlign: 'center', borderBottom: '3px double #000', paddingBottom: '10px', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', margin: 0, letterSpacing: '1px' }}>
+            PONDOK PESANTREN AL-HAMID CINTAMULYA
+          </h2>
+          <p style={{ fontSize: '11px', margin: '4px 0 0 0', fontStyle: 'italic' }}>
+            Jl. Cinta Mulya, Desa Cintamulya, Kec. Candipuro, Kab. Lampung Selatan
+          </p>
+          <p style={{ fontSize: '10px', margin: '2px 0 0 0', color: '#333' }}>
+            Sistem Informasi Absensi Sholat 5 Waktu Santri
+          </p>
+        </div>
+
+        {/* Document Title */}
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, textDecoration: 'underline', textTransform: 'uppercase', margin: 0 }}>
+            LAPORAN REKAPITULASI KEHADIRAN SHOLAT SANTRI
+          </h3>
+          <p style={{ fontSize: '11px', margin: '4px 0 0 0' }}>
+            Periode: {selectedMonth ? months.find(m => m.value === Number(selectedMonth))?.label : 'Semua Bulan'} {selectedYearValue || ''}
+          </p>
+        </div>
+
+        {/* Metadata Table */}
+        <table style={{ width: '100%', marginBottom: '14px', fontSize: '11px', borderCollapse: 'collapse' }}>
+          <tbody>
+            <tr>
+              <td style={{ width: '18%', fontWeight: 600 }}>Tahun Ajaran</td>
+              <td style={{ width: '32%' }}>: {years.find(y => y.id === selectedYear)?.name || 'Semua'}</td>
+              <td style={{ width: '18%', fontWeight: 600 }}>Waktu Sholat</td>
+              <td style={{ width: '32%' }}>: {selectedSholat || 'Semua Waktu'}</td>
+            </tr>
+            <tr>
+              <td style={{ fontWeight: 600 }}>Filter Gender</td>
+              <td>: {selectedGender || 'Semua'}</td>
+              <td style={{ fontWeight: 600 }}>Filter Status</td>
+              <td>: {selectedStatus || 'Semua Status'}</td>
+            </tr>
+            <tr>
+              <td style={{ fontWeight: 600 }}>Filter Kamar</td>
+              <td>: {selectedRoom || 'Semua Kamar'}</td>
+              <td style={{ fontWeight: 600 }}>Tanggal Cetak</td>
+              <td>: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Aggregation Summary Table */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '16px', fontSize: '10px', textAlign: 'center' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f1f5f9' }}>
+              <th style={printThStyle}>Total Data</th>
+              <th style={printThStyle}>Hadir</th>
+              <th style={printThStyle}>Masbuq</th>
+              <th style={printThStyle}>Sakit</th>
+              <th style={printThStyle}>Izin</th>
+              <th style={printThStyle}>Alfa</th>
+              <th style={printThStyle}>Haid</th>
+              <th style={printThStyle}>Istihadhoh</th>
+              <th style={printThStyle}>Kehadiran</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={printTdStyle}>{summary.total}</td>
+              <td style={printTdStyle}>{summary.hadir}</td>
+              <td style={printTdStyle}>{summary.masbuq}</td>
+              <td style={printTdStyle}>{summary.sakit}</td>
+              <td style={printTdStyle}>{summary.izin}</td>
+              <td style={printTdStyle}>{summary.alfa}</td>
+              <td style={printTdStyle}>{summary.haid}</td>
+              <td style={printTdStyle}>{summary.istihadhoh}</td>
+              <td style={{ ...printTdStyle, fontWeight: 700 }}>{hadirPercentage}%</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Main Data Table */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#e2e8f0' }}>
+              <th style={{ ...printThStyle, width: '25px' }}>No</th>
+              <th style={printThStyle}>Tanggal</th>
+              <th style={printThStyle}>Nama Santri</th>
+              <th style={printThStyle}>Gender</th>
+              <th style={printThStyle}>Kamar</th>
+              <th style={printThStyle}>Sholat</th>
+              <th style={printThStyle}>Status</th>
+              <th style={printThStyle}>Waktu Tapping</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredLogs.map((log, idx) => (
+              <tr key={log.id}>
+                <td style={{ ...printTdStyle, textAlign: 'center' }}>{idx + 1}</td>
+                <td style={printTdStyle}>{new Date(log.date).toLocaleDateString('id-ID')}</td>
+                <td style={{ ...printTdStyle, fontWeight: 600 }}>{log.santri_name}</td>
+                <td style={printTdStyle}>{log.santri_gender}</td>
+                <td style={printTdStyle}>{log.santri_room}</td>
+                <td style={printTdStyle}>{log.prayer_time}</td>
+                <td style={{ ...printTdStyle, fontWeight: 600 }}>{log.status}</td>
+                <td style={printTdStyle}>
+                  {log.scanned_at ? new Date(log.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Signature Section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px', fontSize: '11px', pageBreakInside: 'avoid' }}>
+          <div style={{ textAlign: 'center', width: '220px' }}>
+            <p style={{ margin: 0 }}>Mengetahui,</p>
+            <p style={{ fontWeight: 700, margin: '4px 0 50px 0' }}>Pengasuh Pesantren Al-Hamid</p>
+            <p style={{ fontWeight: 700, textDecoration: 'underline', margin: 0 }}>( .................................... )</p>
+          </div>
+          <div style={{ textAlign: 'center', width: '220px' }}>
+            <p style={{ margin: 0 }}>Candipuro, {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            <p style={{ fontWeight: 700, margin: '4px 0 50px 0' }}>Petugas Absensi</p>
+            <p style={{ fontWeight: 700, textDecoration: 'underline', margin: 0 }}>( .................................... )</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -447,4 +537,18 @@ const sumValueStyle: React.CSSProperties = {
   fontWeight: 700,
   color: 'var(--text-main)',
   marginTop: '2px'
+};
+
+const printThStyle: React.CSSProperties = {
+  border: '1px solid #000',
+  padding: '6px 8px',
+  textAlign: 'center',
+  fontSize: '10px',
+  fontWeight: 'bold'
+};
+
+const printTdStyle: React.CSSProperties = {
+  border: '1px solid #000',
+  padding: '5px 8px',
+  fontSize: '10px'
 };

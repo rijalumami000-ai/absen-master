@@ -81,7 +81,7 @@ async def save_manual_attendance(data: AttendanceManualRequest, db: AsyncSession
             # Update status
             existing.status = item.status
             existing.method = "Manual"
-            # Keep scanned_at if they were marked Hadir via fingerprint earlier but now updated manually
+            existing.scanned_at = datetime.utcnow()
         else:
             # Create new record
             new_att = Attendance(
@@ -90,6 +90,7 @@ async def save_manual_attendance(data: AttendanceManualRequest, db: AsyncSession
                 prayer_time=data.prayer_time,
                 status=item.status,
                 method="Manual",
+                scanned_at=datetime.utcnow(),
                 academic_year_id=active_year.id,
             )
             db.add(new_att)

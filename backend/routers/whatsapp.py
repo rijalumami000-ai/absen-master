@@ -19,8 +19,12 @@ async def get_template(db: AsyncSession = Depends(get_db)):
     
     default_tpl = (
         "Assalamu'alaikum, Bapak/Ibu Wali dari {nama} ({kamar}).\n\n"
-        "Laporan absensi sholat hari {tanggal}:\n"
-        "Sholat {sholat}: *{status}*\n\n"
+        "Laporan absensi sholat 24 Jam ({tanggal}):\n"
+        "- Subuh: *{subuh}*\n"
+        "- Dzuhur: *{dzuhur}*\n"
+        "- Ashar: *{ashar}*\n"
+        "- Maghrib: *{maghrib}*\n"
+        "- Isya: *{isya}*\n\n"
         "Terimakasih.\n- Pesantren Al-Hamid"
     )
     
@@ -51,25 +55,32 @@ async def get_placeholders():
     return {
         "placeholders": [
             {"key": "{nama}", "desc": "Nama Santri"},
-            {"key": "{status}", "desc": "Status Kehadiran (Hadir, Alfa, Sakit, etc.)"},
-            {"key": "{sholat}", "desc": "Waktu Sholat (Subuh, Dzuhur, etc.)"},
-            {"key": "{tanggal}", "desc": "Tanggal Absensi"},
             {"key": "{kamar}", "desc": "Nama Kamar Santri"},
-            {"key": "{gender}", "desc": "Jenis Kelamin (Putra/Putri)"}
+            {"key": "{gender}", "desc": "Jenis Kelamin (Putra/Putri)"},
+            {"key": "{tanggal}", "desc": "Tanggal Laporan Absensi"},
+            {"key": "{subuh}", "desc": "Status Sholat Subuh"},
+            {"key": "{dzuhur}", "desc": "Status Sholat Dzuhur"},
+            {"key": "{ashar}", "desc": "Status Sholat Ashar"},
+            {"key": "{maghrib}", "desc": "Status Sholat Maghrib"},
+            {"key": "{isya}", "desc": "Status Sholat Isya"},
         ]
     }
 
 
 @router.post("/preview")
 async def preview_message(data: WAPreviewRequest, db: AsyncSession = Depends(get_db)):
-    """Render a message preview for a specific santri and prayer time."""
+    """Render a message preview for a specific santri across the 24-hour cycle."""
     # Get template
     tpl_res = await db.execute(select(Setting).where(Setting.key == "wa_template"))
     tpl_setting = tpl_res.scalar_one_or_none()
     template = tpl_setting.value if tpl_setting else (
         "Assalamu'alaikum, Bapak/Ibu Wali dari {nama} ({kamar}).\n\n"
-        "Laporan absensi sholat hari {tanggal}:\n"
-        "Sholat {sholat}: *{status}*\n\n"
+        "Laporan absensi sholat 24 Jam ({tanggal}):\n"
+        "- Subuh: *{subuh}*\n"
+        "- Dzuhur: *{dzuhur}*\n"
+        "- Ashar: *{ashar}*\n"
+        "- Maghrib: *{maghrib}*\n"
+        "- Isya: *{isya}*\n\n"
         "Terimakasih.\n- Pesantren Al-Hamid"
     )
 
@@ -86,23 +97,33 @@ async def preview_message(data: WAPreviewRequest, db: AsyncSession = Depends(get
         except ValueError:
             raise HTTPException(400, "Format tanggal salah. Gunakan YYYY-MM-DD")
 
-    # Get attendance status
+    # Get attendance status for all 5 prayers on target_date
     att_res = await db.execute(
         select(Attendance)
         .where(Attendance.santri_id == santri.id)
         .where(Attendance.date == target_date)
-        .where(Attendance.prayer_time == data.prayer_time)
     )
-    att = att_res.scalar_one_or_none()
-    status_str = att.status if att else "Belum Absen / Alfa"
+    attendances = att_res.scalars().all()
+    att_map = {a.prayer_time: a.status for a in attendances}
+
+    subuh_st = att_map.get("Subuh", "Alfa")
+    dzuhur_st = att_map.get("Dzuhur", "Alfa")
+    ashar_st = att_map.get("Ashar", "Alfa")
+    maghrib_st = att_map.get("Maghrib", "Alfa")
+    isya_st = att_map.get("Isya", "Alfa")
 
     variables = {
         "nama": santri.name,
         "kamar": santri.room,
         "gender": santri.gender,
-        "sholat": data.prayer_time,
         "tanggal": target_date.strftime("%d-%m-%Y"),
-        "status": status_str
+        "subuh": subuh_st,
+        "dzuhur": dzuhur_st,
+        "ashar": ashar_st,
+        "maghrib": maghrib_st,
+        "isya": isya_st,
+        "status": f"Subuh: {subuh_st}, Dzuhur: {dzuhur_st}, Ashar: {ashar_st}, Maghrib: {maghrib_st}, Isya: {isya_st}",
+        "sholat": "Full 24 Jam"
     }
 
     message = render_template(template, variables)
@@ -128,8 +149,12 @@ async def send_bulk_whatsapp(data: WASendRequest, db: AsyncSession = Depends(get
     tpl_setting = tpl_res.scalar_one_or_none()
     template = tpl_setting.value if tpl_setting else (
         "Assalamu'alaikum, Bapak/Ibu Wali dari {nama} ({kamar}).\n\n"
-        "Laporan absensi sholat hari {tanggal}:\n"
-        "Sholat {sholat}: *{status}*\n\n"
+        "Laporan absensi sholat 24 Jam ({tanggal}):\n"
+        "- Subuh: *{subuh}*\n"
+        "- Dzuhur: *{dzuhur}*\n"
+        "- Ashar: *{ashar}*\n"
+        "- Maghrib: *{maghrib}*\n"
+        "- Isya: *{isya}*\n\n"
         "Terimakasih.\n- Pesantren Al-Hamid"
     )
 
@@ -151,23 +176,38 @@ async def send_bulk_whatsapp(data: WASendRequest, db: AsyncSession = Depends(get
             results.append({"santri_id": s_id, "success": False, "error": "Santri tidak ditemukan"})
             continue
 
-        # Get attendance status
+        # Skip if no parent phone number
+        if not santri.parent_phone or not santri.parent_phone.strip():
+            results.append({"santri_id": s_id, "santri_name": santri.name, "success": False, "error": "Tidak ada nomor HP wali santri"})
+            continue
+
+        # Get attendance status for all 5 prayers on target_date
         att_res = await db.execute(
             select(Attendance)
             .where(Attendance.santri_id == santri.id)
             .where(Attendance.date == target_date)
-            .where(Attendance.prayer_time == data.prayer_time)
         )
-        att = att_res.scalar_one_or_none()
-        status_str = att.status if att else "Belum Absen / Alfa"
+        attendances = att_res.scalars().all()
+        att_map = {a.prayer_time: a.status for a in attendances}
+
+        subuh_st = att_map.get("Subuh", "Alfa")
+        dzuhur_st = att_map.get("Dzuhur", "Alfa")
+        ashar_st = att_map.get("Ashar", "Alfa")
+        maghrib_st = att_map.get("Maghrib", "Alfa")
+        isya_st = att_map.get("Isya", "Alfa")
 
         variables = {
             "nama": santri.name,
             "kamar": santri.room,
             "gender": santri.gender,
-            "sholat": data.prayer_time,
             "tanggal": target_date.strftime("%d-%m-%Y"),
-            "status": status_str
+            "subuh": subuh_st,
+            "dzuhur": dzuhur_st,
+            "ashar": ashar_st,
+            "maghrib": maghrib_st,
+            "isya": isya_st,
+            "status": f"Subuh: {subuh_st}, Dzuhur: {dzuhur_st}, Ashar: {ashar_st}, Maghrib: {maghrib_st}, Isya: {isya_st}",
+            "sholat": "Full 24 Jam"
         }
 
         rendered = render_template(template, variables)

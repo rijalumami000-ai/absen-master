@@ -22,7 +22,7 @@ export const PusatData: React.FC = () => {
   const [santriList, setSantriList] = useState<any[]>([]);
   const [rooms, setRooms] = useState<string[]>([]);
   const [selectedRoomFilter, setSelectedRoomFilter] = useState('');
-  const [selectedGenderFilter, setSelectedGenderFilter] = useState('');
+  const [selectedGenderFilter, setSelectedGenderFilter] = useState('Putri');
   const [selectedSourceFilter, setSelectedSourceFilter] = useState('');
   const [selectedFingerprintFilter, setSelectedFingerprintFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');

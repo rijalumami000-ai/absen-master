@@ -779,6 +779,33 @@ select.form-control:focus {
 .badge-haid { background-color: #fae8ff; color: #d946ef; }
 .badge-istihadhoh { background-color: #f1f5f9; color: #475569; }
 
+/* Custom Print Styles */
+.print-only {
+  display: none;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print, .sidebar, .page-header, .card, .grid-3 {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .printable-area {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  @page {
+    margin: 1.5cm;
+    size: auto;
+  }
+}
+
 /* Micro-animations */
 @keyframes pulse {
   0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }

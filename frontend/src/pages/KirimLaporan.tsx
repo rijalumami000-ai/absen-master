@@ -2,32 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { 
   MessageSquare, 
   Send, 
-  HelpCircle, 
   RefreshCw, 
-  Check, 
   AlertCircle,
-  Copy,
   Info,
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { waService, santriService, rekapService } from '../services/api';
+import { waService, santriService } from '../services/api';
 
 export const KirimLaporan: React.FC = () => {
-  const getActiveSholat = () => {
-    const hour = new Date().getHours();
-    if (hour >= 4 && hour < 6) return 'Subuh';
-    if (hour >= 11 && hour < 14) return 'Dzuhur';
-    if (hour >= 15 && hour < 17) return 'Ashar';
-    if (hour >= 17 && hour < 19) return 'Maghrib';
-    if (hour >= 19 && hour < 22) return 'Isya';
-    return 'Subuh';
-  };
-
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [prayerTime, setPrayerTime] = useState(getActiveSholat());
-  const [statusFilter, setStatusFilter] = useState('Alfa'); // Default Alfa (Absent) is what teachers report
-  const [genderFilter, setGenderFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('Putri');
   const [roomFilter, setRoomFilter] = useState('');
   const [rooms, setRooms] = useState<string[]>([]);
 
@@ -41,6 +26,10 @@ export const KirimLaporan: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [previews, setPreviews] = useState<Record<number, string>>({});
   const [loadingList, setLoadingList] = useState(false);
+
+  // 24-Hour Day Completion Check
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isLocked = date >= todayStr;
 
   // Sending progress state
   const [sendingState, setSendingState] = useState<{
@@ -75,31 +64,29 @@ export const KirimLaporan: React.FC = () => {
     setSelectedIds([]);
     setPreviews({});
     try {
-      // 1. Get attendance records matching filters
-      const records = await rekapService.getRekap({
-        date,
-        prayer_time: prayerTime,
-        status: statusFilter || undefined,
-        room: roomFilter || undefined,
-        gender: genderFilter || undefined
+      // 1. Get all santri matching Gender and Room filters
+      const santriData = await santriService.getAll({
+        gender: genderFilter || undefined,
+        room: roomFilter || undefined
       });
       
-      setList(records);
+      setList(santriData);
       
-      // Auto-select all by default
-      setSelectedIds(records.map((r: any) => r.santri_id));
+      // Auto-select santri who have valid parent phone numbers
+      const selectable = santriData.filter((s: any) => s.parent_phone && s.parent_phone.trim());
+      setSelectedIds(selectable.map((s: any) => s.id));
 
-      // 2. Fetch previews
-      for (const rec of records) {
+      // 2. Fetch preview for each santri
+      for (const s of santriData) {
         try {
           const res = await waService.preview({
-            santri_id: rec.santri_id,
-            prayer_time: prayerTime,
+            santri_id: s.id,
+            prayer_time: 'Subuh', // Handled by 24h daily report template
             date: date
           });
           setPreviews(prev => ({
             ...prev,
-            [rec.santri_id]: res.message
+            [s.id]: res.message
           }));
         } catch (err) {
           console.error(err);
@@ -119,7 +106,7 @@ export const KirimLaporan: React.FC = () => {
 
   useEffect(() => {
     loadList();
-  }, [date, prayerTime, statusFilter, genderFilter, roomFilter]);
+  }, [date, genderFilter, roomFilter]);
 
   const handleSaveTemplate = async () => {
     setIsSavingTemplate(true);
@@ -138,7 +125,8 @@ export const KirimLaporan: React.FC = () => {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(list.map(r => r.santri_id));
+      const selectable = list.filter(s => s.parent_phone && s.parent_phone.trim());
+      setSelectedIds(selectable.map(s => s.id));
     } else {
       setSelectedIds([]);
     }
@@ -151,12 +139,17 @@ export const KirimLaporan: React.FC = () => {
   };
 
   const handleSendBroadcast = async () => {
-    if (selectedIds.length === 0) {
-      alert("Silakan pilih minimal satu santri!");
+    if (isLocked) {
+      alert("Laporan 24 jam belum dapat dikirim karena hari ini belum selesai.");
       return;
     }
 
-    if (!window.confirm(`Kirim laporan ke ${selectedIds.length} wali santri terpilih?`)) return;
+    if (selectedIds.length === 0) {
+      alert("Silakan pilih minimal satu santri yang memiliki nomor HP wali!");
+      return;
+    }
+
+    if (!window.confirm(`Kirim laporan 24 jam ke ${selectedIds.length} wali santri terpilih?`)) return;
 
     setSendingState({
       isSending: true,
@@ -165,7 +158,6 @@ export const KirimLaporan: React.FC = () => {
       results: {}
     });
 
-    // Send sequentially to prevent API rate-limit and update progress correctly
     let sentCount = 0;
     const newResults: Record<number, { success: boolean; error?: string }> = {};
 
@@ -173,7 +165,7 @@ export const KirimLaporan: React.FC = () => {
       try {
         const res = await waService.send({
           santri_ids: [sId],
-          prayer_time: prayerTime,
+          prayer_time: 'Subuh',
           date: date
         });
         
@@ -200,12 +192,14 @@ export const KirimLaporan: React.FC = () => {
     alert(`Proses pengiriman selesai! ${Object.values(newResults).filter(r => r.success).length} sukses, ${Object.values(newResults).filter(r => !r.success).length} gagal.`);
   };
 
+  const selectableList = list.filter(s => s.parent_phone && s.parent_phone.trim());
+
   return (
     <div className="animate-slide">
       <div className="page-header">
         <div className="page-title">
           <h1>Kirim Laporan WA</h1>
-          <p>Kirimkan laporan absensi sholat santri secara massal ke no WhatsApp wali santri.</p>
+          <p>Kirimkan laporan harian absensi 24 jam sholat santri secara massal ke nomor WhatsApp wali santri.</p>
         </div>
       </div>
 
@@ -213,10 +207,10 @@ export const KirimLaporan: React.FC = () => {
         {/* Left Column: Filter + List */}
         <div>
           {/* Filters */}
-          <div className="card" style={{ padding: '20px' }}>
+          <div className="card" style={{ padding: '20px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'flex-end' }}>
-              <div className="form-group" style={{ margin: 0, width: '150px' }}>
-                <label className="form-label">Tanggal</label>
+              <div className="form-group" style={{ margin: 0, width: '160px' }}>
+                <label className="form-label">Tanggal Laporan</label>
                 <input 
                   type="date" 
                   className="form-control" 
@@ -225,32 +219,16 @@ export const KirimLaporan: React.FC = () => {
                 />
               </div>
 
-              <div className="form-group" style={{ margin: 0, width: '120px' }}>
-                <label className="form-label">Waktu Sholat</label>
-                <select className="form-control" value={prayerTime} onChange={(e) => setPrayerTime(e.target.value)}>
-                  <option value="Subuh">Subuh</option>
-                  <option value="Dzuhur">Dzuhur</option>
-                  <option value="Ashar">Ashar</option>
-                  <option value="Maghrib">Maghrib</option>
-                  <option value="Isya">Isya</option>
+              <div className="form-group" style={{ margin: 0, width: '130px' }}>
+                <label className="form-label">Gender</label>
+                <select className="form-control" value={genderFilter} onChange={(e) => setGenderFilter(e.target.value)}>
+                  <option value="">Semua</option>
+                  <option value="Putra">Putra</option>
+                  <option value="Putri">Putri</option>
                 </select>
               </div>
 
-              <div className="form-group" style={{ margin: 0, width: '130px' }}>
-                <label className="form-label">Status Kehadiran</label>
-                <select className="form-control" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                  <option value="">Semua Status</option>
-                  <option value="Hadir">Hadir</option>
-                  <option value="Sakit">Sakit</option>
-                  <option value="Izin">Izin</option>
-                  <option value="Alfa">Alfa</option>
-                  <option value="Masbuq">Masbuq</option>
-                  <option value="Haid">Haid</option>
-                  <option value="Istihadhoh">Istihadhoh</option>
-                </select>
-              </div>
-
-              <div className="form-group" style={{ margin: 0, width: '130px' }}>
+              <div className="form-group" style={{ margin: 0, width: '140px' }}>
                 <label className="form-label">Kamar</label>
                 <select className="form-control" value={roomFilter} onChange={(e) => setRoomFilter(e.target.value)}>
                   <option value="">Semua Kamar</option>
@@ -266,9 +244,26 @@ export const KirimLaporan: React.FC = () => {
             </div>
           </div>
 
+          {/* 24-Hour Completion Lock Warning */}
+          {isLocked && (
+            <div className="card" style={{ borderLeft: '4px solid var(--warning)', backgroundColor: '#fffbeb', padding: '16px 20px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <AlertCircle size={24} color="var(--warning)" style={{ flexShrink: 0 }} />
+                <div>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#92400e', margin: 0 }}>
+                    Pengiriman Laporan 24 Jam Belum Terbuka
+                  </h4>
+                  <p style={{ fontSize: '12px', color: '#b45309', margin: '4px 0 0 0', lineHeight: '1.4' }}>
+                    Laporan harian untuk tanggal <strong>{date}</strong> belum dapat dikirim karena hari belum berakhir. Pengiriman laporan 24 jam penuh dibuka mulai pukul <strong>00:00 esok harinya</strong>.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Sending Progress Indicator */}
           {sendingState.isSending && (
-            <div className="card" style={{ borderLeft: '4px solid var(--accent-primary)', padding: '20px' }}>
+            <div className="card" style={{ borderLeft: '4px solid var(--accent-primary)', padding: '20px', marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ fontWeight: 600, fontSize: '14px' }}>Mengirim Laporan WhatsApp...</span>
                 <span style={{ fontWeight: 600, fontSize: '14px' }}>{sendingState.current} / {sendingState.total}</span>
@@ -303,7 +298,7 @@ export const KirimLaporan: React.FC = () => {
               <button 
                 onClick={handleSendBroadcast} 
                 className="btn btn-primary"
-                disabled={selectedIds.length === 0 || sendingState.isSending}
+                disabled={selectedIds.length === 0 || sendingState.isSending || isLocked}
               >
                 <Send size={14} />
                 Kirim Laporan ({selectedIds.length} Terpilih)
@@ -313,12 +308,12 @@ export const KirimLaporan: React.FC = () => {
             {loadingList ? (
               <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
                 <RefreshCw size={32} className="pulse-icon" style={{ margin: '0 auto 10px auto' }} />
-                <p>Memuat antrian laporan...</p>
+                <p>Memuat daftar santri dan preview laporan...</p>
               </div>
             ) : list.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
                 <Info size={32} style={{ margin: '0 auto 10px auto', opacity: 0.5 }} />
-                <p>Tidak ada santri yang cocok untuk dilaporkan.</p>
+                <p>Tidak ada santri yang cocok dengan filter yang dipilih.</p>
               </div>
             ) : (
               <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
@@ -328,47 +323,53 @@ export const KirimLaporan: React.FC = () => {
                       <th style={{ width: '40px', textAlign: 'center' }}>
                         <input 
                           type="checkbox" 
-                          checked={list.length > 0 && selectedIds.length === list.length}
+                          disabled={isLocked || selectableList.length === 0}
+                          checked={selectableList.length > 0 && selectedIds.length === selectableList.length}
                           onChange={handleSelectAll}
                         />
                       </th>
-                      <th>Santri</th>
-                      <th>Detail Kehadiran</th>
-                      <th>Pratinjau Pesan</th>
+                      <th>Santri & Kamar</th>
+                      <th>No. WhatsApp Wali</th>
+                      <th>Pratinjau Pesan 24 Jam</th>
                       <th>Status Kirim</th>
                     </tr>
                   </thead>
                   <tbody>
                     {list.map((rec) => {
-                      const isSelected = selectedIds.includes(rec.santri_id);
-                      const sendResult = sendingState.results[rec.santri_id];
+                      const hasPhone = rec.parent_phone && rec.parent_phone.trim();
+                      const isSelected = selectedIds.includes(rec.id);
+                      const sendResult = sendingState.results[rec.id];
 
                       return (
                         <tr key={rec.id}>
                           <td style={{ textAlign: 'center' }}>
                             <input 
                               type="checkbox" 
+                              disabled={!hasPhone || isLocked}
                               checked={isSelected}
-                              onChange={() => handleSelectOne(rec.santri_id)}
+                              onChange={() => handleSelectOne(rec.id)}
                             />
                           </td>
                           <td>
-                            <div style={{ fontWeight: 600 }}>{rec.santri_name}</div>
+                            <div style={{ fontWeight: 600 }}>{rec.name}</div>
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                              WA: {rec.parent_phone}
+                              Kamar {rec.room} • {rec.gender}
                             </div>
                           </td>
                           <td>
-                            <div style={{ fontSize: '13px' }}>{rec.prayer_time}</div>
-                            <div style={{ marginTop: '4px' }}>
-                              <span className={`badge badge-${rec.status.toLowerCase()}`} style={{ fontSize: '10px' }}>
-                                {rec.status}
+                            {hasPhone ? (
+                              <span style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>
+                                {rec.parent_phone}
                               </span>
-                            </div>
+                            ) : (
+                              <span className="badge badge-alfa" style={{ fontSize: '10px' }}>
+                                Tanpa No. HP Wali
+                              </span>
+                            )}
                           </td>
                           <td>
                             <div style={previewBoxStyle}>
-                              {previews[rec.santri_id] || 'Loading preview...'}
+                              {previews[rec.id] || 'Loading preview...'}
                             </div>
                           </td>
                           <td>
@@ -383,7 +384,9 @@ export const KirimLaporan: React.FC = () => {
                                 </span>
                               )
                             ) : (
-                              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Ready</span>
+                              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                {hasPhone ? (isLocked ? 'Terkunci' : 'Ready') : 'Skipped'}
+                              </span>
                             )}
                           </td>
                         </tr>
@@ -407,8 +410,8 @@ export const KirimLaporan: React.FC = () => {
             <div className="form-group">
               <textarea 
                 className="form-control" 
-                rows={10}
-                style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.5' }}
+                rows={12}
+                style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.5' }}
                 value={templateText}
                 onChange={(e) => setTemplateText(e.target.value)}
               ></textarea>
@@ -432,7 +435,7 @@ export const KirimLaporan: React.FC = () => {
                   <button 
                     key={p.key}
                     onClick={() => {
-                      setTemplateText(prev => prev + p.key);
+                      setTemplateText(prev => prev + ' ' + p.key);
                     }}
                     style={placeholderBadgeStyle}
                     title={p.desc}
@@ -459,8 +462,8 @@ const previewBoxStyle: React.CSSProperties = {
   borderRadius: '8px',
   padding: '8px 12px',
   whiteSpace: 'pre-wrap',
-  maxWidth: '220px',
-  maxHeight: '100px',
+  maxWidth: '240px',
+  maxHeight: '110px',
   overflowY: 'auto',
   color: '#475569'
 };
