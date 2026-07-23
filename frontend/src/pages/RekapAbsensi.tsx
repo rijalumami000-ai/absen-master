@@ -15,14 +15,16 @@ import { academicYearService, santriService, rekapService } from '../services/ap
 
 export const RekapAbsensi: React.FC = () => {
   // Filters State
+  const now = new Date();
   const [years, setYears] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | ''>('');
-  const [selectedMonth, setSelectedMonth] = useState<number | ''>('');
-  const [selectedYearValue, setSelectedYearValue] = useState<number | ''>(''); // Numeric calendar year
-  const [selectedSholat, setSelectedSholat] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState<number | ''>(now.getMonth() + 1);
+  const [selectedYearValue, setSelectedYearValue] = useState<number | ''>(now.getFullYear()); // Numeric calendar year
+  const [selectedSholat, setSelectedSholat] = useState('Subuh');
+  const [selectedStatus, setSelectedStatus] = useState('Hadir');
   const [selectedRoom, setSelectedRoom] = useState('');
-  const [selectedGender, setSelectedGender] = useState('');
+  const [selectedGender, setSelectedGender] = useState('Putri');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [rooms, setRooms] = useState<string[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
@@ -110,9 +112,14 @@ export const RekapAbsensi: React.FC = () => {
     selectedGender
   ]);
 
+  const filteredLogs = logs.filter(log =>
+    log.santri_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    log.santri_room.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Export to CSV
   const handleExportCSV = () => {
-    if (logs.length === 0) {
+    if (filteredLogs.length === 0) {
       alert("Tidak ada data untuk di-export");
       return;
     }
@@ -120,7 +127,7 @@ export const RekapAbsensi: React.FC = () => {
     const headers = ["Tanggal", "Nama Santri", "Gender", "Kamar", "Sholat", "Status", "Metode", "Waktu Scan"];
     const csvRows = [headers.join(",")];
 
-    logs.forEach(log => {
+    filteredLogs.forEach(log => {
       const row = [
         log.date,
         `"${log.santri_name.replace(/"/g, '""')}"`,
@@ -176,6 +183,21 @@ export const RekapAbsensi: React.FC = () => {
       {/* Filters (No Print) */}
       <div className="card no-print" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+          <div className="form-group" style={{ margin: 0, flex: '1 1 180px' }}>
+            <label className="form-label">Cari Santri / Kamar</label>
+            <div style={{ position: 'relative' }}>
+              <Search size={14} style={{ position: 'absolute', left: '10px', top: '12px', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                className="form-control" 
+                style={{ paddingLeft: '32px' }}
+                placeholder="Cari nama..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
           <div className="form-group" style={{ margin: 0, flex: '1 1 150px' }}>
             <label className="form-label">Tahun Ajaran</label>
             <select className="form-control" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value ? Number(e.target.value) : '')}>
@@ -314,7 +336,7 @@ export const RekapAbsensi: React.FC = () => {
             <RefreshCw size={32} className="pulse-icon" style={{ margin: '0 auto 10px auto' }} />
             <p>Memuat rekapitulasi data...</p>
           </div>
-        ) : logs.length === 0 ? (
+        ) : filteredLogs.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
             <HelpCircle size={32} style={{ margin: '0 auto 10px auto', opacity: 0.5 }} />
             <p>Tidak ada data absensi yang sesuai dengan filter.</p>
@@ -334,7 +356,7 @@ export const RekapAbsensi: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log) => (
+                {filteredLogs.map((log) => (
                   <tr key={log.id}>
                     <td style={{ fontWeight: 600 }}>
                       {new Date(log.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}

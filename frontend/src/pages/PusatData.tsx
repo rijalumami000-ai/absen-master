@@ -23,6 +23,8 @@ export const PusatData: React.FC = () => {
   const [rooms, setRooms] = useState<string[]>([]);
   const [selectedRoomFilter, setSelectedRoomFilter] = useState('');
   const [selectedGenderFilter, setSelectedGenderFilter] = useState('');
+  const [selectedSourceFilter, setSelectedSourceFilter] = useState('');
+  const [selectedFingerprintFilter, setSelectedFingerprintFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Form state
@@ -225,10 +227,26 @@ export const PusatData: React.FC = () => {
     }
   };
 
-  const filteredSantri = santriList.filter(s => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.room.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSantri = santriList.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.room.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    let matchesSource = true;
+    if (selectedSourceFilter === 'sekolah_info') {
+      matchesSource = !!s.sekolah_info_santri_id;
+    } else if (selectedSourceFilter === 'manual') {
+      matchesSource = !s.sekolah_info_santri_id;
+    }
+
+    let matchesFingerprint = true;
+    if (selectedFingerprintFilter === 'registered') {
+      matchesFingerprint = !!s.has_fingerprint;
+    } else if (selectedFingerprintFilter === 'unregistered') {
+      matchesFingerprint = !s.has_fingerprint;
+    }
+
+    return matchesSearch && matchesSource && matchesFingerprint;
+  });
 
   // Helper to resolve student photo url dynamically
   const getPhotoUrl = (s: any) => {
@@ -254,8 +272,8 @@ export const PusatData: React.FC = () => {
       {/* Santri Management Card */}
       <div className="card" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: '300px' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
+          <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: '300px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
               <input 
                 type="text" 
@@ -293,7 +311,7 @@ export const PusatData: React.FC = () => {
             {/* Academic Year Filter Dropdown */}
             <select 
               className="form-control" 
-              style={{ width: '180px' }}
+              style={{ width: '170px' }}
               value={selectedYearFilter}
               onChange={(e) => setSelectedYearFilter(e.target.value)}
             >
@@ -303,6 +321,30 @@ export const PusatData: React.FC = () => {
                   Tahun {yr.name} {yr.is_active ? '(Aktif)' : ''}
                 </option>
               ))}
+            </select>
+
+            {/* Source Filter (Asli vs Manual) */}
+            <select 
+              className="form-control" 
+              style={{ width: '150px' }}
+              value={selectedSourceFilter}
+              onChange={(e) => setSelectedSourceFilter(e.target.value)}
+            >
+              <option value="">Semua Data</option>
+              <option value="sekolah_info">Santri Asli</option>
+              <option value="manual">Santri Manual</option>
+            </select>
+
+            {/* Fingerprint Filter */}
+            <select 
+              className="form-control" 
+              style={{ width: '150px' }}
+              value={selectedFingerprintFilter}
+              onChange={(e) => setSelectedFingerprintFilter(e.target.value)}
+            >
+              <option value="">Semua Sidik Jari</option>
+              <option value="registered">Terdaftar</option>
+              <option value="unregistered">Belum Terdaftar</option>
             </select>
           </div>
 

@@ -5,7 +5,8 @@ import {
   Check, 
   RefreshCw,
   SlidersHorizontal,
-  Info
+  Info,
+  Search
 } from 'lucide-react';
 import { santriService, attendanceService, rekapService } from '../services/api';
 
@@ -26,7 +27,8 @@ export const AbsensiManual: React.FC = () => {
   // Filtering
   const [rooms, setRooms] = useState<string[]>([]);
   const [selectedRoom, setSelectedRoom] = useState('');
-  const [selectedGender, setSelectedGender] = useState('');
+  const [selectedGender, setSelectedGender] = useState('Putri');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Data list
   const [santriList, setSantriList] = useState<any[]>([]);
@@ -91,6 +93,11 @@ export const AbsensiManual: React.FC = () => {
     loadData();
   }, [date, prayerTime, selectedRoom, selectedGender]);
 
+  const filteredSantriList = santriList.filter(s =>
+    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.room.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handleStatusChange = (santriId: number, status: string) => {
     setAttendanceMap(prev => ({
       ...prev,
@@ -147,6 +154,21 @@ export const AbsensiManual: React.FC = () => {
 
       <div className="card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'flex-end' }}>
+          <div className="form-group" style={{ margin: 0, width: '180px' }}>
+            <label className="form-label">Cari Santri / Kamar</label>
+            <div style={{ position: 'relative' }}>
+              <Search size={14} style={{ position: 'absolute', left: '10px', top: '12px', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                className="form-control" 
+                style={{ paddingLeft: '32px' }}
+                placeholder="Cari..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
           <div className="form-group" style={{ margin: 0, width: '160px' }}>
             <label className="form-label">Tanggal</label>
             <div style={{ position: 'relative' }}>
@@ -213,13 +235,13 @@ export const AbsensiManual: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border-color)' }}>
           <h3 className="card-title" style={{ margin: 0 }}>
             <FileText size={18} color="var(--accent-primary)" />
-            Pengisian Kehadiran Santri ({santriList.length} orang)
+            Pengisian Kehadiran Santri ({filteredSantriList.length} orang)
           </h3>
           
           <button 
             onClick={handleSave} 
             className="btn btn-primary" 
-            disabled={saving || santriList.length === 0}
+            disabled={saving || filteredSantriList.length === 0}
             style={{ padding: '8px 24px' }}
           >
             {saving ? 'Menyimpan...' : 'Simpan Absensi'}
@@ -231,7 +253,7 @@ export const AbsensiManual: React.FC = () => {
             <RefreshCw size={32} className="pulse-icon" style={{ margin: '0 auto 10px auto' }} />
             <p>Memuat data santri dan status absensi...</p>
           </div>
-        ) : santriList.length === 0 ? (
+        ) : filteredSantriList.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
             <Info size={32} style={{ margin: '0 auto 10px auto', opacity: 0.5 }} />
             <p>Tidak ada santri yang cocok dengan filter yang dipilih.</p>
@@ -247,7 +269,7 @@ export const AbsensiManual: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {santriList.map((santri) => (
+                {filteredSantriList.map((santri) => (
                   <tr key={santri.id}>
                     <td>
                       <div style={{ fontWeight: 600 }}>{santri.name}</div>
