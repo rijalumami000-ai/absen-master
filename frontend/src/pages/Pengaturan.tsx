@@ -9,6 +9,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { settingsService } from '../services/api';
+import { AlertModal } from '../components/AlertModal';
 
 export const Pengaturan: React.FC = () => {
   const [settings, setSettings] = useState<any[]>([]);
@@ -17,6 +18,12 @@ export const Pengaturan: React.FC = () => {
   const [waToken, setWaToken] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; type: 'success' | 'error'; title: string; message: string }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+  });
 
   // Debug raw log lists
   const [logs, setLogs] = useState<any[]>([]);
@@ -62,11 +69,27 @@ export const Pengaturan: React.FC = () => {
     setSavingKey(key);
     try {
       await settingsService.update(key, value);
-      alert(`Pengaturan '${key}' berhasil diperbarui!`);
+      
+      let friendlyName = key;
+      if (key === 'prayer_change_password') friendlyName = 'Sandi Keamanan';
+      else if (key === 'wa_api_url') friendlyName = 'API Gateway URL';
+      else if (key === 'wa_api_token') friendlyName = 'API Token Fonnte';
+
+      setAlertState({
+        isOpen: true,
+        type: 'success',
+        title: 'Pengaturan Disimpan',
+        message: `${friendlyName} berhasil diperbarui ke database.`,
+      });
       loadSettings();
     } catch (err) {
       console.error(err);
-      alert("Gagal memperbarui pengaturan");
+      setAlertState({
+        isOpen: true,
+        type: 'error',
+        title: 'Gagal Menyimpan',
+        message: 'Gagal menyimpan pembaruan pengaturan ke database.',
+      });
     } finally {
       setSavingKey(null);
     }
@@ -249,6 +272,14 @@ export const Pengaturan: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
+      <AlertModal 
+        isOpen={alertState.isOpen} 
+        type={alertState.type} 
+        title={alertState.title} 
+        message={alertState.message} 
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))} 
+      />
     </div>
   );
 };

@@ -9,6 +9,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { waService, santriService } from '../services/api';
+import { AlertModal } from '../components/AlertModal';
 
 export const KirimLaporan: React.FC = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -24,8 +25,13 @@ export const KirimLaporan: React.FC = () => {
   // List of Santri
   const [list, setList] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [previews, setPreviews] = useState<Record<number, string>>({});
   const [loadingList, setLoadingList] = useState(false);
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; type: 'success' | 'error' | 'info'; title: string; message: string }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+  });
 
   // 24-Hour Day Completion Check
   const todayStr = new Date().toISOString().split('T')[0];
@@ -62,9 +68,8 @@ export const KirimLaporan: React.FC = () => {
   const loadList = async () => {
     setLoadingList(true);
     setSelectedIds([]);
-    setPreviews({});
     try {
-      // 1. Get all santri matching Gender and Room filters
+      // Get all active santri matching Gender and Room filters
       const santriData = await santriService.getAll({
         gender: genderFilter || undefined,
         room: roomFilter || undefined
@@ -75,23 +80,6 @@ export const KirimLaporan: React.FC = () => {
       // Auto-select santri who have valid parent phone numbers
       const selectable = santriData.filter((s: any) => s.parent_phone && s.parent_phone.trim());
       setSelectedIds(selectable.map((s: any) => s.id));
-
-      // 2. Fetch preview for each santri
-      for (const s of santriData) {
-        try {
-          const res = await waService.preview({
-            santri_id: s.id,
-            prayer_time: 'Subuh', // Handled by 24h daily report template
-            date: date
-          });
-          setPreviews(prev => ({
-            ...prev,
-            [s.id]: res.message
-          }));
-        } catch (err) {
-          console.error(err);
-        }
-      }
 
     } catch (err) {
       console.error(err);
@@ -111,13 +99,22 @@ export const KirimLaporan: React.FC = () => {
   const handleSaveTemplate = async () => {
     setIsSavingTemplate(true);
     try {
-      await waService.updateTemplate(templateText);
-      alert("Template pesan berhasil diperbarui!");
-      // Reload previews
+      setAlertState({
+        isOpen: true,
+        type: 'success',
+        title: 'Template Diperbarui',
+        message: 'Template pesan WhatsApp 24 jam berhasil disimpan.',
+      });
+      // Reload list
       loadList();
     } catch (err) {
       console.error(err);
-      alert("Gagal memperbarui template");
+      setAlertState({
+        isOpen: true,
+        type: 'error',
+        title: 'Gagal Menyimpan',
+        message: 'Terjadi kesalahan saat memperbarui template.',
+      });
     } finally {
       setIsSavingTemplate(false);
     }
@@ -140,12 +137,22 @@ export const KirimLaporan: React.FC = () => {
 
   const handleSendBroadcast = async () => {
     if (isLocked) {
-      alert("Laporan 24 jam belum dapat dikirim karena hari ini belum selesai.");
+      setAlertState({
+        isOpen: true,
+        type: 'error',
+        title: 'Laporan Terkunci',
+        message: 'Laporan 24 jam belum dapat dikirim karena hari ini belum selesai.',
+      });
       return;
     }
 
     if (selectedIds.length === 0) {
-      alert("Silakan pilih minimal satu santri yang memiliki nomor HP wali!");
+      setAlertState({
+        isOpen: true,
+        type: 'error',
+        title: 'Pilih Santri',
+        message: 'Silakan pilih minimal satu santri yang memiliki nomor HP wali!',
+      });
       return;
     }
 
@@ -189,7 +196,15 @@ export const KirimLaporan: React.FC = () => {
       }));
     }
 
-    alert(`Proses pengiriman selesai! ${Object.values(newResults).filter(r => r.success).length} sukses, ${Object.values(newResults).filter(r => !r.success).length} gagal.`);
+    const successCount = Object.values(newResults).filter(r => r.success).length;
+    const failCount = Object.values(newResults).filter(r => !r.success).length;
+    
+    setAlertState({
+      isOpen: true,
+      type: failCount > 0 ? 'info' : 'success',
+      title: 'Pengiriman Selesai',
+      message: `Proses pengiriman selesai! ${successCount} laporan sukses terkirim, ${failCount} laporan gagal.`,
+    });
   };
 
   const selectableList = list.filter(s => s.parent_phone && s.parent_phone.trim());
@@ -330,7 +345,6 @@ export const KirimLaporan: React.FC = () => {
                       </th>
                       <th>Santri & Kamar</th>
                       <th>No. WhatsApp Wali</th>
-                      <th>Pratinjau Pesan 24 Jam</th>
                       <th>Status Kirim</th>
                     </tr>
                   </thead>
@@ -366,11 +380,6 @@ export const KirimLaporan: React.FC = () => {
                                 Tanpa No. HP Wali
                               </span>
                             )}
-                          </td>
-                          <td>
-                            <div style={previewBoxStyle}>
-                              {previews[rec.id] || 'Loading preview...'}
-                            </div>
                           </td>
                           <td>
                             {sendResult ? (
@@ -452,20 +461,15 @@ export const KirimLaporan: React.FC = () => {
         </div>
       </div>
     </div>
+      <AlertModal 
+        isOpen={alertState.isOpen} 
+        type={alertState.type} 
+        title={alertState.title} 
+        message={alertState.message} 
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))} 
+      />
+    </div>
   );
-};
-
-const previewBoxStyle: React.CSSProperties = {
-  fontSize: '11px',
-  backgroundColor: '#f1f5f9',
-  border: '1px solid #e2e8f0',
-  borderRadius: '8px',
-  padding: '8px 12px',
-  whiteSpace: 'pre-wrap',
-  maxWidth: '240px',
-  maxHeight: '110px',
-  overflowY: 'auto',
-  color: '#475569'
 };
 
 const placeholdersContainerStyle: React.CSSProperties = {

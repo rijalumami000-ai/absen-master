@@ -9,6 +9,7 @@ import {
   Search
 } from 'lucide-react';
 import { santriService, attendanceService, rekapService } from '../services/api';
+import { AlertModal } from '../components/AlertModal';
 
 export const AbsensiManual: React.FC = () => {
   const getActiveSholat = () => {
@@ -35,6 +36,12 @@ export const AbsensiManual: React.FC = () => {
   const [attendanceMap, setAttendanceMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [alertState, setAlertState] = useState<{ isOpen: boolean; type: 'success' | 'error'; title: string; message: string }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+  });
 
   const loadFilterOptions = async () => {
     try {
@@ -123,11 +130,21 @@ export const AbsensiManual: React.FC = () => {
         items: filteredItems
       });
 
-      alert("Data absensi manual berhasil disimpan!");
+      setAlertState({
+        isOpen: true,
+        type: 'success',
+        title: 'Absensi Disimpan',
+        message: 'Data absensi manual santri berhasil disimpan ke database.',
+      });
       loadData();
     } catch (err) {
       console.error(err);
-      alert("Gagal menyimpan data absensi");
+      setAlertState({
+        isOpen: true,
+        type: 'error',
+        title: 'Gagal Menyimpan',
+        message: 'Terjadi kesalahan saat menyimpan data absensi manual.',
+      });
     } finally {
       setSaving(false);
     }
@@ -322,6 +339,13 @@ export const AbsensiManual: React.FC = () => {
           </div>
         )}
       </div>
+      <AlertModal 
+        isOpen={alertState.isOpen} 
+        type={alertState.type} 
+        title={alertState.title} 
+        message={alertState.message} 
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))} 
+      />
     </div>
   );
 };

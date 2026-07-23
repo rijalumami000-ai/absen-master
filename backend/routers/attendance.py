@@ -6,10 +6,11 @@ from ..models import Attendance, Santri, AcademicYear
 from ..schemas import AttendanceManualRequest, AttendanceOut
 from ..services.sse import sse_manager
 from sse_starlette.sse import EventSourceResponse
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from typing import List, Optional
 
 router = APIRouter(prefix="/api/attendance", tags=["Attendance"])
+wib_tz = timezone(timedelta(hours=7))
 
 
 @router.get("/today", response_model=List[AttendanceOut])
@@ -81,7 +82,7 @@ async def save_manual_attendance(data: AttendanceManualRequest, db: AsyncSession
             # Update status
             existing.status = item.status
             existing.method = "Manual"
-            existing.scanned_at = datetime.utcnow()
+            existing.scanned_at = datetime.now(wib_tz)
         else:
             # Create new record
             new_att = Attendance(
@@ -90,7 +91,7 @@ async def save_manual_attendance(data: AttendanceManualRequest, db: AsyncSession
                 prayer_time=data.prayer_time,
                 status=item.status,
                 method="Manual",
-                scanned_at=datetime.utcnow(),
+                scanned_at=datetime.now(wib_tz),
                 academic_year_id=active_year.id,
             )
             db.add(new_att)

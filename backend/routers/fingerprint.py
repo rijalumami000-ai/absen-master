@@ -8,10 +8,11 @@ from ..schemas import (
     FingerprintStartEnrollRequest, FingerprintTemplateOut
 )
 from ..services.sse import sse_manager
-from datetime import datetime, date
+from datetime import datetime, date, timezone, timedelta
 from typing import List, Optional
 
 router = APIRouter(prefix="/api/fingerprint", tags=["Fingerprint"])
+wib_tz = timezone(timedelta(hours=7))
 
 # Global memory state for current enrollment session
 # { "santri_id": int, "started_at": datetime }
@@ -175,7 +176,7 @@ async def scan_fingerprint(data: FingerprintScanRequest, db: AsyncSession = Depe
         # Update scan time if already present but not scan-authenticated
         if existing_att.method == "Manual":
             existing_att.method = "Fingerprint"
-            existing_att.scanned_at = datetime.utcnow()
+            existing_att.scanned_at = datetime.now(wib_tz)
             await db.commit()
     else:
         # Create new attendance record
@@ -185,7 +186,7 @@ async def scan_fingerprint(data: FingerprintScanRequest, db: AsyncSession = Depe
             prayer_time=prayer_time,
             status="Hadir",
             method="Fingerprint",
-            scanned_at=datetime.utcnow(),
+            scanned_at=datetime.now(wib_tz),
             academic_year_id=active_year.id
         )
         db.add(new_att)
