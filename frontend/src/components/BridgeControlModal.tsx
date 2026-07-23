@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
-  Fingerprint, Activity, RefreshCw, CheckCircle2, AlertCircle, X, Shield, Terminal, Smartphone
+  Fingerprint, Activity, RefreshCw, CheckCircle2, X, Shield, Terminal
 } from 'lucide-react';
 
 interface BridgeControlModalProps {
@@ -28,7 +29,6 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
   const [loadingCmd, setLoadingCmd] = useState<string | null>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch status periodically or listen to SSE
   const fetchStatus = async () => {
     try {
       const res = await fetch('/api/fingerprint/bridge-status');
@@ -47,7 +47,6 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
     fetchStatus();
     const interval = setInterval(fetchStatus, 2000);
 
-    // Listen to SSE events for real-time log updates
     const sse = new EventSource('/api/attendance/stream');
     sse.onmessage = (event) => {
       try {
@@ -73,7 +72,6 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
     };
   }, [isOpen]);
 
-  // Auto-scroll terminal log
   useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
@@ -102,101 +100,114 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
 
   const isOnline = data.status === 'online';
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+  return createPortal(
+    <div style={styles.overlay}>
+      <div style={styles.container}>
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-5 text-white flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-md">
-              <Fingerprint className="w-6 h-6 text-white" />
+        <div style={styles.header}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={styles.headerIconWrapper}>
+              <Fingerprint size={24} color="#ffffff" />
             </div>
             <div>
-              <h3 className="font-bold text-lg leading-tight">Pengendali & Status Sensor ZKFinger</h3>
-              <p className="text-xs text-indigo-100 opacity-90">Koneksi Bridge Windows & Realtime Dashboard</p>
+              <h3 style={styles.headerTitle}>Pengendali & Status Sensor ZKFinger</h3>
+              <p style={styles.headerSubtitle}>Koneksi Bridge Windows & Realtime Dashboard</p>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
+          <button onClick={onClose} style={styles.closeBtn} title="Tutup Modal">
+            <X size={20} color="#ffffff" />
           </button>
         </div>
 
-        {/* Content Body */}
-        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+        {/* Scrollable Body */}
+        <div style={styles.body}>
           
-          {/* Status Indicators Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Status Cards */}
+          <div style={styles.gridCards}>
             
-            {/* Status Connection */}
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col justify-between">
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Status Sensor</div>
-              <div className="flex items-center space-x-2">
-                <span className={`w-3 h-3 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                <span className={`font-bold text-base ${isOnline ? 'text-emerald-700' : 'text-rose-600'}`}>
+            {/* Card 1: Sensor Status */}
+            <div style={styles.card}>
+              <div style={styles.cardLabel}>Status Sensor</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0' }}>
+                <span style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  backgroundColor: isOnline ? '#10b981' : '#ef4444',
+                  boxShadow: isOnline ? '0 0 10px #10b981' : 'none'
+                }} />
+                <span style={{
+                  fontWeight: 700,
+                  fontSize: '16px',
+                  color: isOnline ? '#047857' : '#b91c1c'
+                }}>
                   {isOnline ? 'ONLINE' : 'OFFLINE'}
                 </span>
               </div>
-              <div className="text-[11px] text-slate-400 mt-2 truncate">
-                SN: <span className="font-mono text-slate-600 font-medium">{data.sensor_sn}</span>
+              <div style={styles.cardSub}>
+                SN: <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#334155' }}>{data.sensor_sn}</span>
               </div>
             </div>
 
-            {/* Active Mode */}
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col justify-between">
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Mode Aktif Saat Ini</div>
-              <div>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
-                  data.mode === 'register' 
-                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' 
-                    : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                }`}>
+            {/* Card 2: Mode Aktif */}
+            <div style={styles.card}>
+              <div style={styles.cardLabel}>Mode Aktif Saat Ini</div>
+              <div style={{ margin: '4px 0' }}>
+                <span style={{
+                  display: 'inline-block',
+                  padding: '4px 10px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  backgroundColor: data.mode === 'register' ? '#e0e7ff' : '#d1fae5',
+                  color: data.mode === 'register' ? '#3730a3' : '#065f46',
+                  border: `1px solid ${data.mode === 'register' ? '#c7d2fe' : '#a7f3d0'}`
+                }}>
                   {data.mode === 'register' ? '📝 MODE DAFTAR' : '✅ MODE ABSENSI'}
                 </span>
               </div>
-              <div className="text-[11px] text-slate-400 mt-2">
-                {data.mode === 'register' ? 'Menanti tempelan 3x sampel jari' : 'Siap scan kehadiran harian'}
+              <div style={styles.cardSub}>
+                {data.mode === 'register' ? 'Tempel jari ke sensor 3x' : 'Siap scan kehadiran harian'}
               </div>
             </div>
 
-            {/* Template Count */}
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col justify-between">
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Sidik Jari Terdaftar</div>
-              <div className="text-xl font-extrabold text-slate-800">
-                {data.templates_count} <span className="text-xs font-normal text-slate-500">template</span>
+            {/* Card 3: Template Count */}
+            <div style={styles.card}>
+              <div style={styles.cardLabel}>Sidik Jari Terdaftar</div>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '4px 0' }}>
+                {data.templates_count} <span style={{ fontSize: '12px', fontWeight: 500, color: '#64748b' }}>template</span>
               </div>
-              <div className="text-[11px] text-slate-400 mt-2">
-                Tersimpan di memori cache local
+              <div style={styles.cardSub}>
+                Memori cache lokal C# Bridge
               </div>
             </div>
 
           </div>
 
-          {/* Action Remote Control Buttons */}
-          <div>
-            <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center space-x-2">
-              <Activity className="w-4 h-4 text-indigo-600" />
+          {/* Remote Control Section */}
+          <div style={{ marginTop: '20px' }}>
+            <div style={styles.sectionHeader}>
+              <Activity size={16} color="#4f46e5" />
               <span>Pilihan Mode & Kontrol Bridge</span>
             </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+            <div style={styles.gridButtons}>
               
               <button
                 onClick={() => handleSendCommand('set_verify')}
                 disabled={loadingCmd !== null}
-                className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-bold text-sm transition-all shadow-sm ${
-                  data.mode === 'verify'
-                    ? 'bg-emerald-600 text-white ring-2 ring-emerald-600/30'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
+                style={{
+                  ...styles.actionBtn,
+                  backgroundColor: data.mode === 'verify' ? '#10b981' : '#f1f5f9',
+                  color: data.mode === 'verify' ? '#ffffff' : '#334155',
+                  border: data.mode === 'verify' ? '2px solid #059669' : '1px solid #e2e8f0'
+                }}
               >
                 {loadingCmd === 'set_verify' ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw size={16} className="spin-icon" />
                 ) : (
-                  <CheckCircle2 className="w-4 h-4" />
+                  <CheckCircle2 size={16} />
                 )}
                 <span>MODE ABSENSI</span>
               </button>
@@ -204,16 +215,17 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
               <button
                 onClick={() => handleSendCommand('set_register')}
                 disabled={loadingCmd !== null}
-                className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-bold text-sm transition-all shadow-sm ${
-                  data.mode === 'register'
-                    ? 'bg-indigo-600 text-white ring-2 ring-indigo-600/30'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
+                style={{
+                  ...styles.actionBtn,
+                  backgroundColor: data.mode === 'register' ? '#4f46e5' : '#f1f5f9',
+                  color: data.mode === 'register' ? '#ffffff' : '#334155',
+                  border: data.mode === 'register' ? '2px solid #3730a3' : '1px solid #e2e8f0'
+                }}
               >
                 {loadingCmd === 'set_register' ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw size={16} className="spin-icon" />
                 ) : (
-                  <Fingerprint className="w-4 h-4" />
+                  <Fingerprint size={16} />
                 )}
                 <span>MODE DAFTAR</span>
               </button>
@@ -221,12 +233,17 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
               <button
                 onClick={() => handleSendCommand('sync_templates')}
                 disabled={loadingCmd !== null}
-                className="flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-bold text-sm bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-all shadow-sm"
+                style={{
+                  ...styles.actionBtn,
+                  backgroundColor: '#f3e8ff',
+                  color: '#6b21a8',
+                  border: '1px solid #e9d5ff'
+                }}
               >
                 {loadingCmd === 'sync_templates' ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw size={16} className="spin-icon" />
                 ) : (
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw size={16} />
                 )}
                 <span>SYNC TEMPLATE</span>
               </button>
@@ -234,26 +251,25 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
             </div>
           </div>
 
-          {/* Terminal Realtime Log Console */}
-          <div>
-            <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Terminal className="w-4 h-4 text-slate-600" />
+          {/* Terminal Console */}
+          <div style={{ marginTop: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={styles.sectionHeader}>
+                <Terminal size={16} color="#475569" />
                 <span>Log Aktivitas Realtime</span>
               </div>
-              <span className="text-[11px] font-normal text-slate-400">Auto-sync 2 detik</span>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>Auto-sync 2 detik</span>
             </div>
 
-            <div 
-              ref={logContainerRef}
-              className="bg-slate-900 text-slate-200 font-mono text-xs p-4 rounded-xl h-48 overflow-y-auto shadow-inner space-y-1"
-            >
+            <div ref={logContainerRef} style={styles.terminalContainer}>
               {data.logs.length === 0 ? (
-                <div className="text-slate-500 italic text-center py-12">Belum ada log aktivitas dari ZKFinger Bridge...</div>
+                <div style={{ color: '#64748b', fontStyle: 'italic', textAlign: 'center', paddingTop: '40px' }}>
+                  Belum ada log aktivitas dari ZKFinger Bridge...
+                </div>
               ) : (
                 data.logs.map((log, idx) => (
-                  <div key={idx} className="leading-relaxed hover:bg-slate-800/60 px-1 rounded transition-colors">
-                    <span className="text-emerald-400 select-none">&gt; </span>
+                  <div key={idx} style={styles.logLine}>
+                    <span style={{ color: '#10b981', marginRight: '6px' }}>&gt;</span>
                     <span>{log}</span>
                   </div>
                 ))
@@ -264,20 +280,183 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 p-4 border-t border-slate-100 flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-xs text-slate-500">
-            <Shield className="w-4 h-4 text-emerald-600" />
-            <span>ZKFinger SDK v10 • Mode Sentuh Web Aktif</span>
+        <div style={styles.footer}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748b' }}>
+            <Shield size={16} color="#10b981" />
+            <span>ZKFinger SDK v10 • Controller Mode Aktif</span>
           </div>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-sm transition-colors"
-          >
+          <button onClick={onClose} style={styles.closeFooterBtn}>
             Tutup
           </button>
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
+};
+
+const styles: Record<string, React.CSSProperties> = {
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backdropFilter: 'blur(6px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2500,
+    padding: '16px'
+  },
+  container: {
+    backgroundColor: '#ffffff',
+    borderRadius: '20px',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+    width: '100%',
+    maxWidth: '650px',
+    maxHeight: '90vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    border: '1px solid #e2e8f0'
+  },
+  header: {
+    background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+    color: '#ffffff',
+    padding: '18px 24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  headerIconWrapper: {
+    width: '42px',
+    height: '42px',
+    borderRadius: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  headerTitle: {
+    fontSize: '16px',
+    fontWeight: 700,
+    color: '#ffffff',
+    margin: 0,
+    lineHeight: 1.2
+  },
+  headerSubtitle: {
+    fontSize: '12px',
+    color: '#e0e7ff',
+    margin: '2px 0 0 0',
+    opacity: 0.9
+  },
+  closeBtn: {
+    background: 'rgba(255, 255, 255, 0.15)',
+    border: 'none',
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'background 0.2s'
+  },
+  body: {
+    padding: '20px 24px',
+    overflowY: 'auto',
+    flex: 1
+  },
+  gridCards: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+    gap: '12px'
+  },
+  card: {
+    backgroundColor: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    borderRadius: '14px',
+    padding: '14px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between'
+  },
+  cardLabel: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  },
+  cardSub: {
+    fontSize: '11px',
+    color: '#94a3b8',
+    marginTop: '4px'
+  },
+  sectionHeader: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#334155',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  },
+  gridButtons: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+    gap: '10px',
+    marginTop: '10px'
+  },
+  actionBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '12px 16px',
+    borderRadius: '12px',
+    fontWeight: 700,
+    fontSize: '13px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+  },
+  terminalContainer: {
+    backgroundColor: '#0f172a',
+    color: '#e2e8f0',
+    fontFamily: '"Fira Code", "Courier New", monospace',
+    fontSize: '12px',
+    padding: '14px',
+    borderRadius: '12px',
+    height: '170px',
+    overflowY: 'auto',
+    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.5)'
+  },
+  logLine: {
+    lineHeight: 1.6,
+    borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+    paddingBottom: '2px'
+  },
+  footer: {
+    backgroundColor: '#f8fafc',
+    padding: '14px 24px',
+    borderTop: '1px solid #e2e8f0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  closeFooterBtn: {
+    backgroundColor: '#e2e8f0',
+    color: '#334155',
+    border: 'none',
+    padding: '8px 20px',
+    borderRadius: '10px',
+    fontWeight: 700,
+    fontSize: '13px',
+    cursor: 'pointer'
+  }
 };
