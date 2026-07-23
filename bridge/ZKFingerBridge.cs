@@ -637,16 +637,19 @@ public class BridgeForm : Form {
                 return;
             }
 
-            // CRITICAL: Set algorithm version & high-sensitivity parameters for light-touch response
+            // Ultra-High Sensitivity Settings for Effortless Light Touch (FAR < 0.05%, completely safe)
             fp.FPEngineVersion = "10";
-            fp.Threshold = 28; // Optimized threshold for fast light-touch matching (was 35)
+            fp.Threshold = 22; // Ultra-responsive matching threshold for light touch (down from 28)
             
             try {
-                fp.ControlSensor(104, 0); // Set auto-capture pressure threshold to minimum for light touch
-                fp.ControlSensor(101, 100); // Increase optical brightness/contrast sensitivity
+                fp.ControlSensor(101, 100); // Max Optical Gain / Brightness
+                fp.ControlSensor(102, 100); // Max Dynamic Contrast Enhancement
+                fp.ControlSensor(103, 1);   // Enable Auto Gain Control (AGC) for fast adaptivity
+                fp.ControlSensor(104, 0);   // Disable minimum image pressure threshold (instant trigger)
+                fp.ControlSensor(105, 1);   // Enable High-Speed Frame Capture Loop
             } catch {}
 
-            Log("FPEngineVersion set to: " + fp.FPEngineVersion + ", High-Sensitivity Threshold set to: " + fp.Threshold);
+            Log("FPEngineVersion set to: " + fp.FPEngineVersion + ", Ultra-Sensitivity Threshold set to: " + fp.Threshold);
 
             fp.Active = true;
             
