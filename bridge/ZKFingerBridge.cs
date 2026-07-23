@@ -534,8 +534,8 @@ public class BridgeForm : Form {
                 int count = cacheIdMap.Count;
                 
                 string escapedLog = logMessage != null ? logMessage.Replace("\"", "\\\"").Replace("\r", "").Replace("\n", "") : "";
-                string payload = string.Format("{{\"mode\":\"{0}\",\"sensor_sn\":\"{1}\",\"templates_count\":{2},\"log\":\"{3}\"}}", 
-                    modeStr, snStr, count, escapedLog);
+                string payload = string.Format("{{\"mode\":\"{0}\",\"sensor_sn\":\"{1}\",\"templates_count\":{2},\"log\":\"{3}\",\"enroll_samples\":{4}}}", 
+                    modeStr, snStr, count, escapedLog, enrollSamplesCount);
                 
                 HttpPost("/api/fingerprint/bridge-status", payload);
             } catch {}

@@ -34,7 +34,13 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
       const res = await fetch('/api/fingerprint/bridge-status');
       if (res.ok) {
         const json = await res.json();
-        setData(json);
+        setData({
+          mode: json.mode || 'verify',
+          status: json.status || 'offline',
+          sensor_sn: json.sensor_sn || '-',
+          templates_count: json.templates_count || 0,
+          logs: Array.isArray(json.logs) ? json.logs : []
+        });
       }
     } catch (e) {
       console.error('Error fetching bridge status:', e);
@@ -52,16 +58,21 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
       try {
         const payload = JSON.parse(event.data);
         if (payload.type === 'bridge_status_update') {
-          setData(prev => ({
-            ...prev,
-            mode: payload.data.mode,
-            status: payload.data.status,
-            sensor_sn: payload.data.sensor_sn,
-            templates_count: payload.data.templates_count,
-            logs: payload.data.latest_log 
-              ? [...prev.logs.filter(l => l !== payload.data.latest_log), payload.data.latest_log].slice(-40)
-              : prev.logs
-          }));
+          setData(prev => {
+            const currentLogs = Array.isArray(prev?.logs) ? prev.logs : [];
+            const newLog = payload.data.latest_log;
+            const updatedLogs = newLog 
+              ? [...currentLogs.filter(l => l !== newLog), newLog].slice(-40)
+              : currentLogs;
+            return {
+              ...prev,
+              mode: payload.data.mode || 'verify',
+              status: payload.data.status || 'offline',
+              sensor_sn: payload.data.sensor_sn || '-',
+              templates_count: payload.data.templates_count || 0,
+              logs: updatedLogs
+            };
+          });
         }
       } catch (err) {}
     };

@@ -108,16 +108,16 @@ export const PusatData: React.FC = () => {
         const data = JSON.parse(event.data);
 
         if (data.type === 'bridge_status_update') {
-          const logMsg = data.data.latest_log || '';
-          if (logMsg) {
-            setEnrollLogs(prev => [...prev.filter(l => l !== logMsg), logMsg].slice(-15));
+          const samples = data.data?.enroll_samples;
+          if (typeof samples === 'number' && samples >= 0) {
+            setEnrollStep(samples);
           }
-          if (logMsg.includes('Tempel Jari ke-1')) {
-            setEnrollStep(1);
-          } else if (logMsg.includes('Tempel Jari ke-2')) {
-            setEnrollStep(2);
-          } else if (logMsg.includes('Tempel Jari ke-3') || logMsg.includes('SUKSES!')) {
-            setEnrollStep(3);
+          const logMsg = data.data?.latest_log || '';
+          if (logMsg) {
+            setEnrollLogs(prev => {
+              const safeLogs = Array.isArray(prev) ? prev : [];
+              return [...safeLogs.filter(l => l !== logMsg), logMsg].slice(-15);
+            });
           }
         }
 

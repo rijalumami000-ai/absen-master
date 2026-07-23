@@ -231,6 +231,7 @@ bridge_state = {
     "status": "offline",       # "online" or "offline"
     "sensor_sn": "-",
     "templates_count": 0,
+    "enroll_samples": 0,       # 0, 1, 2, 3
     "last_heartbeat": None,    # datetime
     "logs": [],                # recent logs (max 30)
     "pending_command": None    # "set_verify", "set_register", "sync_templates"
@@ -251,6 +252,7 @@ async def get_bridge_status():
         "status": bridge_state["status"],
         "sensor_sn": bridge_state["sensor_sn"],
         "templates_count": bridge_state["templates_count"],
+        "enroll_samples": bridge_state.get("enroll_samples", 0),
         "logs": bridge_state["logs"][-30:],
         "active_enroll_santri_id": current_enroll_session.get("santri_id")
     }
@@ -267,6 +269,8 @@ async def update_bridge_status(data: dict):
         bridge_state["sensor_sn"] = data["sensor_sn"]
     if "templates_count" in data:
         bridge_state["templates_count"] = data["templates_count"]
+    if "enroll_samples" in data:
+        bridge_state["enroll_samples"] = data["enroll_samples"]
     if "log" in data and data["log"]:
         # Prepend timestamp to log
         time_str = datetime.now().strftime("%H:%M:%S")
@@ -281,6 +285,7 @@ async def update_bridge_status(data: dict):
         "status": bridge_state["status"],
         "sensor_sn": bridge_state["sensor_sn"],
         "templates_count": bridge_state["templates_count"],
+        "enroll_samples": bridge_state.get("enroll_samples", 0),
         "latest_log": bridge_state["logs"][-1] if bridge_state["logs"] else ""
     })
     
