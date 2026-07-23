@@ -637,10 +637,16 @@ public class BridgeForm : Form {
                 return;
             }
 
-            // CRITICAL: Set algorithm version (must be done right after InitEngine per official SDK demo)
+            // CRITICAL: Set algorithm version & high-sensitivity parameters for light-touch response
             fp.FPEngineVersion = "10";
-            fp.Threshold = 35; // Recommended for 1:N matching in ZKFinger 10.0
-            Log("FPEngineVersion set to: " + fp.FPEngineVersion + ", Threshold set to: " + fp.Threshold);
+            fp.Threshold = 28; // Optimized threshold for fast light-touch matching (was 35)
+            
+            try {
+                fp.ControlSensor(104, 0); // Set auto-capture pressure threshold to minimum for light touch
+                fp.ControlSensor(101, 100); // Increase optical brightness/contrast sensitivity
+            } catch {}
+
+            Log("FPEngineVersion set to: " + fp.FPEngineVersion + ", High-Sensitivity Threshold set to: " + fp.Threshold);
 
             fp.Active = true;
             
