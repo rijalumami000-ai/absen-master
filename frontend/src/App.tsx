@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
+import { BridgeControlModal } from './components/BridgeControlModal';
 import { ScanAbsensi } from './pages/ScanAbsensi';
 import { PusatData } from './pages/PusatData';
 import { AbsensiManual } from './pages/AbsensiManual';
@@ -9,6 +10,7 @@ import { Pengaturan } from './pages/Pengaturan';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('scan');
+  const [isBridgeModalOpen, setIsBridgeModalOpen] = useState<boolean>(false);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -31,10 +33,20 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        onOpenBridgeModal={() => setIsBridgeModalOpen(true)}
+      />
       <main className="main-content">
         {renderContent()}
       </main>
+
+      {/* Global ZKFinger Bridge Remote Controller Modal */}
+      <BridgeControlModal 
+        isOpen={isBridgeModalOpen} 
+        onClose={() => setIsBridgeModalOpen(false)} 
+      />
     </div>
   );
 };

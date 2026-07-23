@@ -509,6 +509,80 @@ public class BridgeForm : Form {
         }).Start();
     }
 
+    private void SendStatusToServer(string logMessage = null) {
+        new Thread(() => {
+            try {
+                string modeStr = isRegisterMode ? "register" : "verify";
+                string snStr = (fp != null && !string.IsNullOrEmpty(fp.SensorSN)) ? fp.SensorSN : "-";
+                int count = cacheIdMap.Count;
+                
+                string escapedLog = logMessage != null ? logMessage.Replace("\"", "\\\"").Replace("\r", "").Replace("\n", "") : "";
+                string payload = string.Format("{{\"mode\":\"{0}\",\"sensor_sn\":\"{1}\",\"templates_count\":{2},\"log\":\"{3}\"}}", 
+                    modeStr, snStr, count, escapedLog);
+                
+                HttpPost("/api/fingerprint/bridge-status", payload);
+            } catch {}
+        }).Start();
+    }
+
+    // =============================
+    // Auto-Mode Polling & Remote Command Listener
+    // =============================
+    private void PollEnrollStatus() {
+        if (fp == null) return;
+        new Thread(() => {
+            try {
+                // 1. Send periodic heartbeat status
+                SendStatusToServer(null);
+
+                // 2. Poll remote command from Web UI
+                string cmdJson = HttpGet("/api/fingerprint/bridge-command-poll");
+                if (!string.IsNullOrEmpty(cmdJson) && !cmdJson.StartsWith("ERROR")) {
+                    if (cmdJson.Contains("\"set_verify\"")) {
+                        this.BeginInvoke((MethodInvoker)delegate {
+                            SafeLog("Perintah dari Web: Masuk Mode Absensi");
+                            SetVerifyMode();
+                        });
+                    } else if (cmdJson.Contains("\"set_register\"")) {
+                        this.BeginInvoke((MethodInvoker)delegate {
+                            SafeLog("Perintah dari Web: Masuk Mode Daftar");
+                            SetRegisterMode();
+                        });
+                    } else if (cmdJson.Contains("\"sync_templates\"")) {
+                        this.BeginInvoke((MethodInvoker)delegate {
+                            SafeLog("Perintah dari Web: Sync Template");
+                            SyncTemplates();
+                        });
+                    }
+                }
+
+                // 3. Poll active enrollment session if not already in register mode
+                if (!isRegisterMode) {
+                    string json = HttpGet("/api/fingerprint/enroll-status");
+                    if (json.Contains("\"active\": true") || json.Contains("\"active\":true")) {
+                        var idMatch = Regex.Match(json, @"""santri_id""\s*:\s*(\d+)");
+                        int sid = idMatch.Success ? int.Parse(idMatch.Groups[1].Value) : 0;
+                        var nameMatch = Regex.Match(json, @"""name""\s*:\s*""([^""]+)""");
+                        string sname = nameMatch.Success ? nameMatch.Groups[1].Value : "";
+                        
+                        if (sid > 0 && enrollingSantriId != sid) {
+                            enrollingSantriId = sid;
+                            this.BeginInvoke((MethodInvoker)delegate {
+                                SafeLog("Server meminta pendaftaran sidik jari untuk: " + sname + " (ID: " + sid + ")");
+                                SetRegisterMode();
+                                ShowBalloon("Pendaftaran Sidik Jari", "Tempelkan jari " + sname + " ke sensor 3 kali.", ToolTipIcon.Info);
+                            });
+                        }
+                    } else {
+                        if (enrollingSantriId != 0) {
+                            enrollingSantriId = 0;
+                        }
+                    }
+                }
+            } catch {}
+        }).Start();
+    }
+
     // =============================
     // Sensor Initialization
     // =============================
@@ -648,38 +722,6 @@ public class BridgeForm : Form {
                     Log("Gagal memuat template: " + ex.Message);
                 }
             });
-        }).Start();
-    }
-
-    // =============================
-    // Auto-Mode Polling (Backend → Bridge)
-    // =============================
-    private void PollEnrollStatus() {
-        if (fp == null || isRegisterMode) return;
-        new Thread(() => {
-            try {
-                string json = HttpGet("/api/fingerprint/enroll-status");
-                if (json.Contains("\"active\": true") || json.Contains("\"active\":true")) {
-                    // Extract santri_id
-                    var idMatch = Regex.Match(json, @"""santri_id""\s*:\s*(\d+)");
-                    int sid = idMatch.Success ? int.Parse(idMatch.Groups[1].Value) : 0;
-                    var nameMatch = Regex.Match(json, @"""name""\s*:\s*""([^""]+)""");
-                    string sname = nameMatch.Success ? nameMatch.Groups[1].Value : "";
-                    
-                    if (sid > 0 && enrollingSantriId != sid) {
-                        enrollingSantriId = sid;
-                        this.BeginInvoke((MethodInvoker)delegate {
-                            SafeLog("Server meminta pendaftaran sidik jari untuk: " + sname + " (ID: " + sid + ")");
-                            SetRegisterMode();
-                            ShowBalloon("Pendaftaran Sidik Jari", "Tempelkan jari " + sname + " ke sensor 3 kali.", ToolTipIcon.Info);
-                        });
-                    }
-                } else {
-                    if (enrollingSantriId != 0) {
-                        enrollingSantriId = 0;
-                    }
-                }
-            } catch {}
         }).Start();
     }
 

@@ -20,6 +20,7 @@ import {
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onOpenBridgeModal?: () => void;
 }
 
 interface MenuItem {
@@ -39,9 +40,11 @@ interface MenuGroup {
   items: MenuItem[];
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpenBridgeModal }) => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [bridgeStatus, setBridgeStatus] = useState<'online' | 'offline'>('offline');
+  const [bridgeMode, setBridgeMode] = useState<'verify' | 'register'>('verify');
   
   // Track open/closed state of accordions. Pesantren is open by default.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -51,12 +54,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     'Madrasah Aliyah': false
   });
 
-  // Live Timer for Sidebar Widget
+  // Live Timer & Bridge status checker
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-    return () => clearInterval(timer);
+
+    const checkBridgeStatus = async () => {
+      try {
+        const res = await fetch('/api/fingerprint/bridge-status');
+        if (res.ok) {
+          const json = await res.json();
+          setBridgeStatus(json.status);
+          setBridgeMode(json.mode);
+        }
+      } catch (e) {}
+    };
+
+    checkBridgeStatus();
+    const bridgeTimer = setInterval(checkBridgeStatus, 3000);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(bridgeTimer);
+    };
   }, []);
 
   // Menu structure
@@ -249,9 +270,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           </div>
         </div>
 
-        <div className="widget-status" title="Status Mesin Fingerprint (ZKFinger Bridge)">
-          <span className="status-indicator-dot" />
-          <span>Mesin Ready</span>
+        <div 
+          className="widget-status" 
+          onClick={onOpenBridgeModal}
+          style={{ cursor: 'pointer' }}
+          title="Klik untuk membuka Pengendali & Status Sensor ZKFinger"
+        >
+          <span 
+            className="status-indicator-dot" 
+            style={{ 
+              backgroundColor: bridgeStatus === 'online' ? '#10B981' : '#EF4444',
+              boxShadow: bridgeStatus === 'online' ? '0 0 8px #10B981' : 'none'
+            }} 
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+            <span style={{ fontWeight: 600, fontSize: '11px' }}>
+              {bridgeStatus === 'online' ? (bridgeMode === 'register' ? '📝 Mode Daftar' : '✅ Sensor Ready') : '❌ Sensor Offline'}
+            </span>
+          </div>
         </div>
       </div>
 

@@ -224,3 +224,93 @@ async def cancel_enroll():
     current_enroll_session.clear()
     await sse_manager.broadcast("enroll_cancelled", {})
     return {"message": "Pendaftaran sidik jari dibatalkan"}
+
+# Global memory state for C# Bridge Status & Remote Commands
+bridge_state = {
+    "mode": "verify",          # "verify" or "register"
+    "status": "offline",       # "online" or "offline"
+    "sensor_sn": "-",
+    "templates_count": 0,
+    "last_heartbeat": None,    # datetime
+    "logs": [],                # recent logs (max 30)
+    "pending_command": None    # "set_verify", "set_register", "sync_templates"
+}
+
+@router.get("/bridge-status")
+async def get_bridge_status():
+    """Endpoint for Web UI to get the current status & logs of the C# Bridge."""
+    now = datetime.now(timezone.utc)
+    if bridge_state["last_heartbeat"]:
+        diff = (now - bridge_state["last_heartbeat"]).total_seconds()
+        bridge_state["status"] = "online" if diff < 8 else "offline"
+    else:
+        bridge_state["status"] = "offline"
+
+    return {
+        "mode": bridge_state["mode"],
+        "status": bridge_state["status"],
+        "sensor_sn": bridge_state["sensor_sn"],
+        "templates_count": bridge_state["templates_count"],
+        "logs": bridge_state["logs"][-30:],
+        "active_enroll_santri_id": current_enroll_session.get("santri_id")
+    }
+
+@router.post("/bridge-status")
+async def update_bridge_status(data: dict):
+    """Endpoint called periodically by the C# Bridge to report its status & logs."""
+    bridge_state["status"] = "online"
+    bridge_state["last_heartbeat"] = datetime.now(timezone.utc)
+    
+    if "mode" in data:
+        bridge_state["mode"] = data["mode"]
+    if "sensor_sn" in data:
+        bridge_state["sensor_sn"] = data["sensor_sn"]
+    if "templates_count" in data:
+        bridge_state["templates_count"] = data["templates_count"]
+    if "log" in data and data["log"]:
+        # Prepend timestamp to log
+        time_str = datetime.now().strftime("%H:%M:%S")
+        log_entry = f"[{time_str}] {data['log']}"
+        bridge_state["logs"].append(log_entry)
+        if len(bridge_state["logs"]) > 50:
+            bridge_state["logs"] = bridge_state["logs"][-50:]
+
+    # Broadcast status change to Web UI via SSE
+    await sse_manager.broadcast("bridge_status_update", {
+        "mode": bridge_state["mode"],
+        "status": bridge_state["status"],
+        "sensor_sn": bridge_state["sensor_sn"],
+        "templates_count": bridge_state["templates_count"],
+        "latest_log": bridge_state["logs"][-1] if bridge_state["logs"] else ""
+    })
+    
+    return {"status": "ok"}
+
+@router.post("/bridge-command")
+async def send_bridge_command(data: dict):
+    """Endpoint for Web UI to send remote commands to the C# Bridge (set_verify, set_register, sync_templates)."""
+    cmd = data.get("command")
+    if cmd not in ["set_verify", "set_register", "sync_templates"]:
+        raise HTTPException(400, "Perintah tidak valid")
+        
+    bridge_state["pending_command"] = cmd
+    
+    if cmd == "set_verify":
+        bridge_state["mode"] = "verify"
+    elif cmd == "set_register":
+        bridge_state["mode"] = "register"
+
+    await sse_manager.broadcast("bridge_command_sent", {
+        "command": cmd,
+        "mode": bridge_state["mode"]
+    })
+    
+    return {"message": f"Perintah {cmd} berhasil dikirim ke C# Bridge"}
+
+@router.get("/bridge-command-poll")
+async def poll_bridge_command():
+    """Endpoint called by C# Bridge to pick up pending commands sent from the Web UI."""
+    cmd = bridge_state["pending_command"]
+    bridge_state["pending_command"] = None
+    return {"command": cmd}
+
