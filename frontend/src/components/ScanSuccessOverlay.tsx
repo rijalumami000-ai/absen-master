@@ -25,6 +25,16 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
 }) => {
   const [imgError, setImgError] = React.useState(false);
 
+  const formatPhotoUrl = (url?: string) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/static/') || url.startsWith('/sekolah-info-static/')) return url;
+    if (url.startsWith('/')) return url;
+    if (url.startsWith('storage/')) return `/sekolah-info-static/${url.replace('storage/', '')}`;
+    if (url.startsWith('uploads/')) return `/sekolah-info-static/${url}`;
+    return `/static/uploads/${url}`;
+  };
+
   useEffect(() => {
     if (isOpen) {
       setImgError(false);
@@ -33,30 +43,43 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
       // Format: "Rijal Umami sudah absen sholat subuh"
       const speechText = `${santriName} sudah absen sholat ${prayerTime}`;
       
+      const playAudioFallback = () => {
+        try {
+          const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(speechText)}&tl=id&client=tw-ob`;
+          const audio = new Audio(ttsUrl);
+          audio.volume = 1.0;
+          audio.play().catch(() => {});
+        } catch (err) {}
+      };
+
       if ('speechSynthesis' in window) {
         try {
-          window.speechSynthesis.cancel(); // Stop previous voice
+          window.speechSynthesis.cancel();
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
+
           const utterance = new SpeechSynthesisUtterance(speechText);
           utterance.lang = 'id-ID';
           utterance.rate = 0.95;
           utterance.pitch = 1.0;
+          utterance.volume = 1.0;
 
-          // Select Indonesian voice if available
           const voices = window.speechSynthesis.getVoices();
-          const idVoice = voices.find(v => v.lang.toLowerCase().includes('id'));
-          if (idVoice) utterance.voice = idVoice;
+          const indonesianVoice = voices.find(
+            v => v.lang.toLowerCase().includes('id') || v.lang.toLowerCase().includes('indonesia')
+          );
+          if (indonesianVoice) {
+            utterance.voice = indonesianVoice;
+          }
 
+          utterance.onerror = () => playAudioFallback();
           window.speechSynthesis.speak(utterance);
         } catch (err) {
-          console.error('Speech synthesis error:', err);
+          playAudioFallback();
         }
       } else {
-        // Fallback to Google Translate TTS Audio
-        try {
-          const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(speechText)}&tl=id&client=tw-ob`;
-          const audio = new Audio(ttsUrl);
-          audio.play().catch(() => {});
-        } catch (err) {}
+        playAudioFallback();
       }
 
       const timer = setTimeout(() => {
@@ -65,6 +88,8 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
       return () => clearTimeout(timer);
     }
   }, [isOpen, santriName, prayerTime, onClose]);
+
+  const formattedPhoto = formatPhotoUrl(photoUrl);
 
   if (!isOpen) return null;
 
@@ -82,9 +107,9 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
 
         <div style={profileBoxStyle}>
           <div style={avatarStyle}>
-            {photoUrl && !imgError ? (
+            {formattedPhoto && !imgError ? (
               <img 
-                src={photoUrl} 
+                src={formattedPhoto} 
                 alt={santriName} 
                 style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} 
                 onError={() => setImgError(true)}
