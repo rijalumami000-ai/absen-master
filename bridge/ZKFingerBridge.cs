@@ -637,19 +637,11 @@ public class BridgeForm : Form {
                 return;
             }
 
-            // Ultra-High Sensitivity Settings for Effortless Light Touch (FAR < 0.05%, completely safe)
+            // Official ZKFinger 10.0 Engine Configuration
             fp.FPEngineVersion = "10";
-            fp.Threshold = 22; // Ultra-responsive matching threshold for light touch (down from 28)
+            fp.Threshold = 30; // Recommended responsive 1:N threshold for ZKFinger 10.0
             
-            try {
-                fp.ControlSensor(101, 100); // Max Optical Gain / Brightness
-                fp.ControlSensor(102, 100); // Max Dynamic Contrast Enhancement
-                fp.ControlSensor(103, 1);   // Enable Auto Gain Control (AGC) for fast adaptivity
-                fp.ControlSensor(104, 0);   // Disable minimum image pressure threshold (instant trigger)
-                fp.ControlSensor(105, 1);   // Enable High-Speed Frame Capture Loop
-            } catch {}
-
-            Log("FPEngineVersion set to: " + fp.FPEngineVersion + ", Ultra-Sensitivity Threshold set to: " + fp.Threshold);
+            Log("FPEngineVersion set to: " + fp.FPEngineVersion + ", Threshold set to: " + fp.Threshold);
 
             fp.Active = true;
             
