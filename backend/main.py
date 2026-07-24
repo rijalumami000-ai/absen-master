@@ -11,31 +11,26 @@ async def lifespan(app: FastAPI):
     # Inisialisasi database relasional PostgreSQL (membuat tabel jika belum ada)
     await init_db()
     
-    # Auto-assign valid photo_url for registered fingerprint santri if missing
+    # Auto-cleanup test santri accounts (Rijal Umami, Indra Pratama, Marwan, Bejir)
     try:
         from .database import async_session
-        from .models import Santri
-        from sqlalchemy import select
+        from .models import Santri, Attendance, FingerprintLog
+        from sqlalchemy import select, delete
         async with async_session() as session:
-            res = await session.execute(
-                select(Santri).where(Santri.fingerprint_id.isnot(None)).where(
-                    (Santri.photo_url.is_(None)) | (Santri.photo_url == "")
-                )
-            )
-            fp_santri = res.scalars().all()
-            if fp_santri:
-                sample_photos = [
-                    "/uploads/foto-santri/santri_83_1780830669006.jpg",
-                    "/uploads/foto-santri/santri_59_1780831095105.jpg",
-                    "/uploads/foto-santri/santri_179_1778656621040.jpg",
-                    "/uploads/foto-santri/santri_298_1778896627951.jpg"
-                ]
-                for idx, s in enumerate(fp_santri):
-                    s.photo_url = sample_photos[idx % len(sample_photos)]
+            test_names = ["Rijal Umami", "Indra Pratama", "Marwan", "Bejir"]
+            res = await session.execute(select(Santri).where(Santri.name.in_(test_names)))
+            test_santri = res.scalars().all()
+            ids = [s.id for s in test_santri]
+            fp_ids = [s.fingerprint_id for s in test_santri if s.fingerprint_id]
+            if ids:
+                await session.execute(delete(Attendance).where(Attendance.santri_id.in_(ids)))
+                if fp_ids:
+                    await session.execute(delete(FingerprintLog).where(FingerprintLog.fingerprint_id.in_(fp_ids)))
+                await session.execute(delete(Santri).where(Santri.id.in_(ids)))
                 await session.commit()
-                print(f"Assigned photo_url for {len(fp_santri)} registered santri.")
+                print(f"Cleaned up {len(ids)} test santri accounts.")
     except Exception as e:
-        print("Auto photo assign error:", e)
+        print("Auto test cleanup error:", e)
 
     yield
 
