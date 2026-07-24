@@ -74,7 +74,7 @@ public class BridgeForm : Form {
     private string templateDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "ZKFingerTemplates");
     
     // Server Configuration
-    private string serverUrl = "http://localhost:8000";
+    private string serverUrl = "https://absen.alhamidcintamulya.my.id";
     private string configPath;
 
     // UI Controls
@@ -441,15 +441,16 @@ public class BridgeForm : Form {
     // Configuration
     // =============================
     private void LoadConfig() {
+        serverUrl = "https://absen.alhamidcintamulya.my.id";
         try {
             if (File.Exists(configPath)) {
                 string text = File.ReadAllText(configPath);
-                var match = Regex.Match(text, @"""ServerUrl""\s*:\s*""([^""]+)""");
-                if (match.Success) {
-                    serverUrl = match.Value.Split('"')[3];
+                Match match = Regex.Match(text, @"""(server_url|serverurl)""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+                if (match.Success && !string.IsNullOrEmpty(match.Groups[2].Value)) {
+                    serverUrl = match.Groups[2].Value.TrimEnd('/');
                 }
             } else {
-                string defaultJson = "{\n  \"ServerUrl\": \"http://localhost:8000\"\n}";
+                string defaultJson = "{\n  \"ServerUrl\": \"https://absen.alhamidcintamulya.my.id\"\n}";
                 File.WriteAllText(configPath, defaultJson);
             }
         } catch {}
