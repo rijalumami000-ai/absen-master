@@ -9,6 +9,7 @@ interface ScanSuccessOverlayProps {
   gender: string;
   prayerTime: string;
   time: string;
+  photoUrl?: string;
   onClose: () => void;
 }
 
@@ -19,16 +20,51 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
   gender,
   prayerTime,
   time,
+  photoUrl,
   onClose,
 }) => {
+  const [imgError, setImgError] = React.useState(false);
+
   useEffect(() => {
     if (isOpen) {
+      setImgError(false);
+
+      // Play Indonesian Text-to-Speech (TTS) Voice Announcement
+      // Format: "Rijal Umami sudah absen sholat subuh"
+      const speechText = `${santriName} sudah absen sholat ${prayerTime}`;
+      
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel(); // Stop previous voice
+          const utterance = new SpeechSynthesisUtterance(speechText);
+          utterance.lang = 'id-ID';
+          utterance.rate = 0.95;
+          utterance.pitch = 1.0;
+
+          // Select Indonesian voice if available
+          const voices = window.speechSynthesis.getVoices();
+          const idVoice = voices.find(v => v.lang.toLowerCase().includes('id'));
+          if (idVoice) utterance.voice = idVoice;
+
+          window.speechSynthesis.speak(utterance);
+        } catch (err) {
+          console.error('Speech synthesis error:', err);
+        }
+      } else {
+        // Fallback to Google Translate TTS Audio
+        try {
+          const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(speechText)}&tl=id&client=tw-ob`;
+          const audio = new Audio(ttsUrl);
+          audio.play().catch(() => {});
+        } catch (err) {}
+      }
+
       const timer = setTimeout(() => {
         onClose();
-      }, 3000); // Auto close after 3 seconds
+      }, 3500); // Auto close after 3.5 seconds
       return () => clearTimeout(timer);
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, santriName, prayerTime, onClose]);
 
   if (!isOpen) return null;
 
@@ -46,7 +82,16 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
 
         <div style={profileBoxStyle}>
           <div style={avatarStyle}>
-            <User size={36} color="#4f46e5" />
+            {photoUrl && !imgError ? (
+              <img 
+                src={photoUrl} 
+                alt={santriName} 
+                style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} 
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <User size={36} color="#4f46e5" />
+            )}
           </div>
           <div style={infoStyle}>
             <h3 style={nameStyle}>{santriName}</h3>

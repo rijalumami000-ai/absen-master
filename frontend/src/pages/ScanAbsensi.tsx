@@ -39,6 +39,7 @@ export const ScanAbsensi: React.FC = () => {
     name: '',
     room: '',
     gender: '',
+    photoUrl: '',
     prayerTime: '',
     time: '',
   });
@@ -79,13 +80,14 @@ export const ScanAbsensi: React.FC = () => {
             name: data.name,
             room: data.room,
             gender: data.gender,
+            photoUrl: data.photo_url || '',
             prayerTime: data.prayer_time,
             time: data.time,
           });
-          // Auto-dismiss after 2 seconds
+          // Auto-dismiss after 3.5 seconds to allow full TTS voice playback
           setTimeout(() => {
             setSuccessOverlay(prev => ({ ...prev, isOpen: false }));
-          }, 2000);
+          }, 3500);
           // Update list
           setRecentScans(prev => [
             {
@@ -313,6 +315,7 @@ export const ScanAbsensi: React.FC = () => {
         santriName={successOverlay.name}
         room={successOverlay.room}
         gender={successOverlay.gender}
+        photoUrl={successOverlay.photoUrl}
         prayerTime={successOverlay.prayerTime}
         time={successOverlay.time}
         onClose={() => setSuccessOverlay(prev => ({ ...prev, isOpen: false }))}

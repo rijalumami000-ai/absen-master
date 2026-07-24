@@ -206,6 +206,7 @@ async def scan_fingerprint(data: FingerprintScanRequest, db: AsyncSession = Depe
         "name": santri.name,
         "gender": santri.gender,
         "room": santri.room,
+        "photo_url": santri.photo_url,
         "prayer_time": prayer_time,
         "status": status_str,
         "time": datetime.now().strftime("%H:%M:%S")
