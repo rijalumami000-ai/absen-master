@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Database, 
   FileText, 
@@ -14,7 +15,9 @@ import {
   Building,
   BookOpen,
   GraduationCap,
-  Award
+  Award,
+  RefreshCw,
+  Rocket
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -45,6 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [bridgeStatus, setBridgeStatus] = useState<'online' | 'offline'>('offline');
   const [bridgeMode, setBridgeMode] = useState<'verify' | 'register'>('verify');
+  const [isLaunchingBridge, setIsLaunchingBridge] = useState<boolean>(false);
   
   // Track open/closed state of accordions. Pesantren is open by default.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -54,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
     'Madrasah Aliyah': false
   });
 
-  // Live Timer & Bridge status checker
+  // Live Timer & Bridge status checker with Smart Auto-Launch
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -67,6 +71,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
           const json = await res.json();
           setBridgeStatus(json.status);
           setBridgeMode(json.mode);
+
+          if (json.status === 'online') {
+            setIsLaunchingBridge(false);
+          } else if (json.status === 'offline') {
+            const hasAttempted = sessionStorage.getItem('bridge_autolaunch_done');
+            if (!hasAttempted) {
+              sessionStorage.setItem('bridge_autolaunch_done', 'true');
+              setIsLaunchingBridge(true);
+              // Trigger custom protocol to launch Windows executable automatically
+              window.location.href = 'zkfingerbridge://launch';
+              
+              // Safety timeout to hide loading banner if user cancels
+              setTimeout(() => {
+                setIsLaunchingBridge(false);
+              }, 12000);
+            }
+          }
         }
       } catch (e) {}
     };
@@ -270,25 +291,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
           </div>
         </div>
 
-        <div 
-          className="widget-status" 
-          onClick={onOpenBridgeModal}
-          style={{ cursor: 'pointer' }}
-          title="Klik untuk membuka Pengendali & Status Sensor ZKFinger"
-        >
-          <span 
-            className="status-indicator-dot" 
+        {isLaunchingBridge ? (
+          <div 
+            className="widget-status" 
+            onClick={onOpenBridgeModal}
             style={{ 
-              backgroundColor: bridgeStatus === 'online' ? '#10B981' : '#EF4444',
-              boxShadow: bridgeStatus === 'online' ? '0 0 8px #10B981' : 'none'
-            }} 
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-            <span style={{ fontWeight: 600, fontSize: '11px' }}>
-              {bridgeStatus === 'online' ? (bridgeMode === 'register' ? '📝 Mode Daftar' : '✅ Sensor Ready') : '❌ Sensor Offline'}
-            </span>
+              cursor: 'pointer',
+              backgroundColor: '#e0e7ff',
+              border: '1px solid #c7d2fe',
+              borderRadius: '8px',
+              padding: '6px 10px'
+            }}
+            title="Mengaktifkan aplikasi ZKFinger Bridge Windows..."
+          >
+            <RefreshCw size={14} className="spin-icon" color="#4f46e5" />
+            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+              <span style={{ fontWeight: 700, fontSize: '11px', color: '#3730a3' }}>
+                Mengaktifkan Bridge...
+              </span>
+              <span style={{ fontSize: '9px', color: '#4338ca' }}>
+                Menghubungkan sensor
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div 
+            className="widget-status" 
+            onClick={onOpenBridgeModal}
+            style={{ cursor: 'pointer' }}
+            title="Klik untuk membuka Pengendali & Status Sensor ZKFinger"
+          >
+            <span 
+              className="status-indicator-dot" 
+              style={{ 
+                backgroundColor: bridgeStatus === 'online' ? '#10B981' : '#EF4444',
+                boxShadow: bridgeStatus === 'online' ? '0 0 8px #10B981' : 'none'
+              }} 
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+              <span style={{ fontWeight: 600, fontSize: '11px' }}>
+                {bridgeStatus === 'online' ? (bridgeMode === 'register' ? '📝 Mode Daftar' : '✅ Sensor Ready') : '❌ Sensor Offline'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer */}
@@ -296,6 +342,39 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
         <p>© 2026 PP. Al-Hamid</p>
         <p style={{ marginTop: '2px', fontSize: '9px', opacity: 0.7 }}>v1.0 • Sidik Jari</p>
       </div>
+
+      {/* Floating Auto-Launch Loading Banner */}
+      {isLaunchingBridge && createPortal(
+        <div style={topBannerStyle} className="animate-slide">
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <RefreshCw size={18} className="spin-icon" color="#ffffff" />
+          </div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontWeight: 700, fontSize: '13px', color: '#ffffff' }}>Mengaktifkan ZKFinger Bridge Windows...</div>
+            <div style={{ fontSize: '11px', color: '#e0e7ff', marginTop: '2px' }}>Aplikasi sedang berjalan di latar belakang. Sensor akan otomatis ONLINE dalam hitungan detik.</div>
+          </div>
+        </div>,
+        document.body
+      )}
     </aside>
   );
+};
+
+const topBannerStyle: React.CSSProperties = {
+  position: 'fixed',
+  top: '20px',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  backgroundColor: '#4f46e5',
+  color: '#ffffff',
+  padding: '12px 22px',
+  borderRadius: '16px',
+  boxShadow: '0 20px 25px -5px rgba(79, 70, 229, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '14px',
+  zIndex: 9999,
+  border: '1px solid rgba(255, 255, 255, 0.2)',
+  maxWidth: '520px',
+  width: '90%'
 };
