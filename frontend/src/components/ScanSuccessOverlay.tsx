@@ -80,6 +80,10 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
               utterance.pitch = 1.2; // Female voice pitch
               utterance.volume = 1.0;
 
+              utterance.onend = () => {
+                setTimeout(() => onCloseRef.current(), 1000);
+              };
+
               const voices = window.speechSynthesis.getVoices();
               const femaleVoice = voices.find(
                 v => v.lang.toLowerCase().includes('id') &&
@@ -100,29 +104,30 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
           hasPlayedPrimary = true;
         };
 
+        // Close overlay smoothly 1.2s AFTER the spoken sentence finishes completely
+        audio.onended = () => {
+          setTimeout(() => {
+            onCloseRef.current();
+          }, 1200);
+        };
+
         audio.play().catch((err) => {
           console.warn('Google TTS audio playback blocked or failed, using browser voice fallback:', err);
           playWebSpeechFallback();
         });
       }
 
-      const timer = setTimeout(() => {
+      // Max safety fallback timer (6.5s) in case audio fails to load or play
+      const maxSafetyTimer = setTimeout(() => {
         onCloseRef.current();
-      }, 4500); // Auto close after 4.5 seconds
+      }, 6500);
 
       return () => {
-        clearTimeout(timer);
+        clearTimeout(maxSafetyTimer);
       };
     } else {
-      // Reset scan key and stop audio when overlay closes
+      // Reset scan key when overlay closes
       lastPlayedKeyRef.current = '';
-      if (activeAudioRef.current) {
-        activeAudioRef.current.pause();
-        activeAudioRef.current = null;
-      }
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
     }
   }, [isOpen, santriName, prayerTime, time]);
 

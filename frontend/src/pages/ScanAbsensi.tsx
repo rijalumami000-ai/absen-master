@@ -92,7 +92,7 @@ export const ScanAbsensi: React.FC = () => {
         const data = JSON.parse(event.data);
         
         if (data.type === 'scan_success') {
-          // Open popup
+          // Open popup (closing is controlled by ScanSuccessOverlay after TTS audio finishes)
           setSuccessOverlay({
             isOpen: true,
             name: data.name,
@@ -102,10 +102,6 @@ export const ScanAbsensi: React.FC = () => {
             prayerTime: data.prayer_time,
             time: data.time,
           });
-          // Auto-dismiss after 3.5 seconds to allow full TTS voice playback
-          setTimeout(() => {
-            setSuccessOverlay(prev => ({ ...prev, isOpen: false }));
-          }, 3500);
           // Update list
           setRecentScans(prev => [
             {
