@@ -169,9 +169,17 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
                 href="/static/downloads/ZKFingerBridge-v1.2.zip" 
                 download="ZKFingerBridge-v1.2.zip"
                 style={styles.downloadBtn}
-                title="Download Paket Instalasi .ZIP ZKFinger Bridge v1.2"
+                title="Download Paket Instalasi Lengkap (Bridge + Driver + Auto-Launcher)"
               >
-                <Download size={15} /> Download Bridge (.ZIP)
+                <Download size={15} /> Download Paket (.ZIP)
+              </a>
+              <a 
+                href="/static/downloads/Driver_ZKFinger_SDK_Setup.exe" 
+                download="Driver_ZKFinger_SDK_Setup.exe"
+                style={styles.driverBtn}
+                title="Download Installer Driver Sidik Jari ZKFinger SDK (.EXE)"
+              >
+                <Shield size={15} /> Driver SDK (.EXE)
               </a>
             </div>
           </div>
@@ -556,6 +564,22 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '12px',
     cursor: 'pointer',
     boxShadow: '0 4px 6px -1px rgba(5, 150, 105, 0.3)',
+    whiteSpace: 'nowrap',
+    textDecoration: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px'
+  },
+  driverBtn: {
+    backgroundColor: '#0284c7',
+    color: '#ffffff',
+    border: 'none',
+    padding: '10px 16px',
+    borderRadius: '10px',
+    fontWeight: 700,
+    fontSize: '12px',
+    cursor: 'pointer',
+    boxShadow: '0 4px 6px -1px rgba(2, 132, 199, 0.3)',
     whiteSpace: 'nowrap',
     textDecoration: 'none',
     display: 'inline-flex',

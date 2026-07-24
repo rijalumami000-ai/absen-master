@@ -2,22 +2,27 @@
  PANDUAN INSTALASI PRAKTIS ZKFINGER BRIDGE WINDOWS (v1.2)
 ============================================================
 
-Langkah-Langkah Instalasi (Cukup 1x di setiap Laptop/PC):
+Langkah-Langkah Instalasi (Cukup 1x di setiap Laptop/PC baru):
 
 1. EXTRACT FILE ZIP
    Extract seluruh isi file ZIP ini ke folder pilihan Anda (misalnya: D:\ZKFingerBridge\).
 
-2. REGISTRASI PROTOCOL LAUNCHER WEB (PENTING!)
+2. INSTALL DRIVER SENSOR SIDIK JARI (PENTING APABILA LAPTOP BARU!)
+   - Buka folder "Driver_ZKFinger_SDK"
+   - Jalankan "setup.exe"
+   - Ikuti langkah instalasi driver ZKFinger hingga selesai (Next -> Finish).
+
+3. REGISTRASI PROTOCOL LAUNCHER WEB
    - Klik kanan pada file "Registrasi_Protocol.bat"
    - Pilih "Run as Administrator" (Jalankan sebagai Administrator)
    - Tekan Enter / ikuti petunjuk hingga selesai.
 
-3. COLOKKAN SENSOR & JALANKAN APLIKASI
+4. COLOKKAN SENSOR & JALANKAN APLIKASI
    - Hubungkan Sensor Sidik Jari USB (ZK9500 / ZK4500 / ZK7500) ke port USB Laptop/PC.
    - Double-click "ZKFingerBridge.exe".
-   - Status sensor akan berwarna HIJAU ("Sensor Terhubung").
+   - Status sensor akan berwarna HIJAU ("Sensor Terhubung") & Server ONLINE.
 
-4. BUKA WEB ABSENSI
+5. BUKA WEB ABSENSI
    - Buka website Absensi di Chrome/Edge: https://absen.alhamidcintamulya.my.id
    - Aplikasi Bridge di Windows akan otomatis terhubung dengan Web!
 
