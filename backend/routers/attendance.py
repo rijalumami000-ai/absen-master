@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from ..database import get_db
@@ -104,3 +105,27 @@ async def save_manual_attendance(data: AttendanceManualRequest, db: AsyncSession
 async def stream_attendance():
     """SSE streaming endpoint for pushing live attendance scan/enroll alerts to the client."""
     return EventSourceResponse(sse_manager.subscribe())
+
+
+@router.get("/tts")
+async def get_google_female_tts(text: str = Query(...)):
+    """Backend proxy for Google Translate Indonesian Female TTS audio stream."""
+    try:
+        url = "https://translate.google.com/translate_tts"
+        params = {
+            "ie": "UTF-8",
+            "q": text,
+            "tl": "id",
+            "client": "tw-ob"
+        }
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        }
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, params=params, headers=headers, timeout=6.0)
+            if resp.status_code == 200:
+                return Response(content=resp.content, media_type="audio/mpeg")
+    except Exception as e:
+        print(f"TTS Proxy Error: {e}")
+    
+    raise HTTPException(500, "Gagal memproses audio TTS")

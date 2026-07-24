@@ -32,6 +32,9 @@ if not os.path.exists(sekolah_info_public):
 
 if os.path.exists(sekolah_info_public):
     app.mount("/sekolah-info-static", StaticFiles(directory=sekolah_info_public), name="sekolah-info-static")
+    uploads_dir = os.path.join(sekolah_info_public, "uploads")
+    if os.path.exists(uploads_dir):
+        app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # Setup CORS agar frontend React (Vite) dapat mengakses API
 cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://absen.alhamidcintamulya.my.id,https://absen.alhamidcintamulya.my.id")

@@ -28,10 +28,11 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
   const formatPhotoUrl = (url?: string) => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/uploads/')) return url;
     if (url.startsWith('/static/') || url.startsWith('/sekolah-info-static/')) return url;
     if (url.startsWith('/')) return url;
     if (url.startsWith('storage/')) return `/sekolah-info-static/${url.replace('storage/', '')}`;
-    if (url.startsWith('uploads/')) return `/sekolah-info-static/${url}`;
+    if (url.startsWith('uploads/')) return `/${url}`;
     return `/static/uploads/${url}`;
   };
 
@@ -39,7 +40,7 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
     if (isOpen) {
       setImgError(false);
 
-      // Play Google Text-to-Speech (TTS) Female Voice Announcement (Free API)
+      // Play Google Text-to-Speech (TTS) Female Voice Announcement via FastAPI Proxy
       // Format: "Rijal Umami sudah absen sholat Subuh"
       const speechText = `${santriName} sudah absen sholat ${prayerTime}`;
       
@@ -73,15 +74,15 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
       };
 
       try {
-        // Free Google Translate TTS API (Indonesian Female Voice)
-        const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(speechText)}&tl=id&client=tw-ob`;
+        // High-Quality Google Translate TTS API Female Voice (Proxy Server to avoid CORS)
+        const ttsUrl = `/api/attendance/tts?text=${encodeURIComponent(speechText)}`;
         const audio = new Audio(ttsUrl);
         audio.volume = 1.0;
         
         const playPromise = audio.play();
         if (playPromise !== undefined) {
           playPromise.catch((err) => {
-            console.warn('Google TTS playback blocked or failed, using browser fallback:', err);
+            console.warn('Google TTS proxy audio playback blocked, using fallback:', err);
             playWebSpeechFallback();
           });
         }
