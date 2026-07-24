@@ -39,47 +39,54 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
     if (isOpen) {
       setImgError(false);
 
-      // Play Indonesian Text-to-Speech (TTS) Voice Announcement
-      // Format: "Rijal Umami sudah absen sholat subuh"
+      // Play Google Text-to-Speech (TTS) Female Voice Announcement (Free API)
+      // Format: "Rijal Umami sudah absen sholat Subuh"
       const speechText = `${santriName} sudah absen sholat ${prayerTime}`;
       
-      const playAudioFallback = () => {
-        try {
-          const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(speechText)}&tl=id&client=tw-ob`;
-          const audio = new Audio(ttsUrl);
-          audio.volume = 1.0;
-          audio.play().catch(() => {});
-        } catch (err) {}
+      const playWebSpeechFallback = () => {
+        if ('speechSynthesis' in window) {
+          try {
+            window.speechSynthesis.cancel();
+            if (window.speechSynthesis.paused) {
+              window.speechSynthesis.resume();
+            }
+
+            const utterance = new SpeechSynthesisUtterance(speechText);
+            utterance.lang = 'id-ID';
+            utterance.rate = 0.95;
+            utterance.pitch = 1.2; // Female voice pitch
+            utterance.volume = 1.0;
+
+            const voices = window.speechSynthesis.getVoices();
+            const femaleVoice = voices.find(
+              v => v.lang.toLowerCase().includes('id') && 
+              (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('gadis') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('indonesia'))
+            ) || voices.find(v => v.lang.toLowerCase().includes('id'));
+
+            if (femaleVoice) {
+              utterance.voice = femaleVoice;
+            }
+
+            window.speechSynthesis.speak(utterance);
+          } catch (err) {}
+        }
       };
 
-      if ('speechSynthesis' in window) {
-        try {
-          window.speechSynthesis.cancel();
-          if (window.speechSynthesis.paused) {
-            window.speechSynthesis.resume();
-          }
-
-          const utterance = new SpeechSynthesisUtterance(speechText);
-          utterance.lang = 'id-ID';
-          utterance.rate = 0.95;
-          utterance.pitch = 1.0;
-          utterance.volume = 1.0;
-
-          const voices = window.speechSynthesis.getVoices();
-          const indonesianVoice = voices.find(
-            v => v.lang.toLowerCase().includes('id') || v.lang.toLowerCase().includes('indonesia')
-          );
-          if (indonesianVoice) {
-            utterance.voice = indonesianVoice;
-          }
-
-          utterance.onerror = () => playAudioFallback();
-          window.speechSynthesis.speak(utterance);
-        } catch (err) {
-          playAudioFallback();
+      try {
+        // Free Google Translate TTS API (Indonesian Female Voice)
+        const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(speechText)}&tl=id&client=tw-ob`;
+        const audio = new Audio(ttsUrl);
+        audio.volume = 1.0;
+        
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Google TTS playback blocked or failed, using browser fallback:', err);
+            playWebSpeechFallback();
+          });
         }
-      } else {
-        playAudioFallback();
+      } catch (err) {
+        playWebSpeechFallback();
       }
 
       const timer = setTimeout(() => {
