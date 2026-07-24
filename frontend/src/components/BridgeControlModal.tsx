@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
-  Fingerprint, Activity, RefreshCw, CheckCircle2, X, Shield, Terminal
+  Fingerprint, Activity, RefreshCw, CheckCircle2, X, Shield, Terminal, Download
 } from 'lucide-react';
 
 interface BridgeControlModalProps {
@@ -137,26 +137,44 @@ export const BridgeControlModal: React.FC<BridgeControlModalProps> = ({ isOpen, 
         <div style={styles.body}>
 
           {/* Launch App Banner if Offline */}
-          {!isOnline && (
-            <div style={styles.launchBanner}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={styles.launchIcon}>
-                  <Fingerprint size={22} color="#ffffff" />
+          {/* Launch App & Download Setup Package Card */}
+          <div style={styles.launchBanner}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={styles.launchIcon}>
+                <Fingerprint size={22} color="#ffffff" />
+              </div>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontWeight: 700, fontSize: '14px', color: '#1e1b4b' }}>
+                  {isOnline ? 'Bridge Status: Active & Connected' : 'Aplikasi Bridge Windows Offline'}
                 </div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontWeight: 700, fontSize: '13px', color: '#1e1b4b' }}>Aplikasi Bridge Windows Offline</div>
-                  <div style={{ fontSize: '11px', color: '#4338ca' }}>Aktifkan aplikasi Bridge di Windows secara otomatis tanpa membuka folder manual.</div>
+                <div style={{ fontSize: '12px', color: '#4338ca', marginTop: '2px' }}>
+                  {isOnline 
+                    ? 'Aplikasi ZKFingerBridge berjalan aktif di laptop ini.' 
+                    : 'Aktifkan Bridge otomatis via protocol web atau download paket instalasi untuk laptop baru.'}
                 </div>
               </div>
-              <button 
-                onClick={() => { window.location.href = 'zkfingerbridge://launch'; }}
-                style={styles.launchBtn}
-                title="Buka ZKFinger Bridge Windows"
-              >
-                🚀 Buka / Aktifkan Bridge
-              </button>
             </div>
-          )}
+            
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {!isOnline && (
+                <button 
+                  onClick={() => { window.location.href = 'zkfingerbridge://launch'; }}
+                  style={styles.launchBtn}
+                  title="Buka ZKFinger Bridge Windows"
+                >
+                  🚀 Buka / Aktifkan Bridge
+                </button>
+              )}
+              <a 
+                href="/static/downloads/ZKFingerBridge-v1.2.zip" 
+                download="ZKFingerBridge-v1.2.zip"
+                style={styles.downloadBtn}
+                title="Download Paket Instalasi .ZIP ZKFinger Bridge v1.2"
+              >
+                <Download size={15} /> Download Bridge (.ZIP)
+              </a>
+            </div>
+          </div>
           
           {/* Status Cards */}
           <div style={styles.gridCards}>
@@ -527,5 +545,21 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.3)',
     whiteSpace: 'nowrap'
+  },
+  downloadBtn: {
+    backgroundColor: '#059669',
+    color: '#ffffff',
+    border: 'none',
+    padding: '10px 16px',
+    borderRadius: '10px',
+    fontWeight: 700,
+    fontSize: '12px',
+    cursor: 'pointer',
+    boxShadow: '0 4px 6px -1px rgba(5, 150, 105, 0.3)',
+    whiteSpace: 'nowrap',
+    textDecoration: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px'
   }
 };

@@ -17,7 +17,8 @@ import {
   GraduationCap,
   Award,
   RefreshCw,
-  Rocket
+  Rocket,
+  Download
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -341,6 +342,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
       <div className="sidebar-footer">
         <p>© 2026 PP. Al-Hamid</p>
         <p style={{ marginTop: '2px', fontSize: '9px', opacity: 0.7 }}>v1.0 • Sidik Jari</p>
+        <a 
+          href="/static/downloads/ZKFingerBridge-v1.2.zip" 
+          download="ZKFingerBridge-v1.2.zip"
+          style={{ 
+            marginTop: '6px', 
+            fontSize: '10px', 
+            color: '#4f46e5', 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '4px',
+            textDecoration: 'none',
+            fontWeight: 600
+          }}
+          title="Download Paket Instalasi ZKFinger Bridge Windows v1.2 (.ZIP)"
+        >
+          <Download size={11} /> Download Bridge (.ZIP)
+        </a>
       </div>
 
       {/* Floating Auto-Launch Loading Banner */}
