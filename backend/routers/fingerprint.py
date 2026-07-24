@@ -200,13 +200,28 @@ async def scan_fingerprint(data: FingerprintScanRequest, db: AsyncSession = Depe
     db.add(log)
     await db.commit()
     
+    # Format photo URL for SSE broadcast
+    formatted_photo = ""
+    if santri.photo_url:
+        p_url = santri.photo_url
+        if p_url.startswith("http://") or p_url.startswith("https://"):
+            formatted_photo = p_url
+        elif p_url.startswith("/sekolah-info-static"):
+            formatted_photo = p_url
+        elif santri.sekolah_info_santri_id or p_url.startswith("/uploads/"):
+            formatted_photo = f"/sekolah-info-static{p_url}" if p_url.startswith("/") else f"/sekolah-info-static/{p_url}"
+        elif p_url.startswith("/static"):
+            formatted_photo = p_url
+        else:
+            formatted_photo = f"/static/uploads/{p_url}"
+
     # Broadcast scan to Web UI
     await sse_manager.broadcast("scan_success", {
         "santri_id": santri.id,
         "name": santri.name,
         "gender": santri.gender,
         "room": santri.room,
-        "photo_url": santri.photo_url,
+        "photo_url": formatted_photo,
         "prayer_time": prayer_time,
         "status": status_str,
         "time": datetime.now().strftime("%H:%M:%S")
