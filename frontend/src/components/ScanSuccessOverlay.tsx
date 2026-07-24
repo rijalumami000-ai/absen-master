@@ -45,17 +45,14 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
     if (isOpen) {
       setImgError(false);
 
-      // 1. Immediately stop any playing audio or speech synthesis to prevent voice overlapping
+      // Stop any existing playing audio to prevent double sound
       if (activeAudioRef.current) {
         activeAudioRef.current.pause();
         activeAudioRef.current.currentTime = 0;
         activeAudioRef.current = null;
       }
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
 
-      // 2. Play Single High-Quality Google Translate TTS Female Voice via Backend Proxy
+      // Play Google Text-to-Speech (TTS) Female Voice ONLY (Backend Proxy)
       const speechText = `${santriName} sudah absen sholat ${prayerTime}`;
       const ttsUrl = `/api/attendance/tts?text=${encodeURIComponent(speechText)}`;
 
@@ -64,19 +61,7 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
       activeAudioRef.current = audio;
 
       audio.play().catch((err) => {
-        console.warn('Google TTS proxy audio blocked, falling back to WebSpeech:', err);
-        // Single controlled fallback if proxy audio cannot play
-        if ('speechSynthesis' in window) {
-          try {
-            window.speechSynthesis.cancel();
-            if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-            const utterance = new SpeechSynthesisUtterance(speechText);
-            utterance.lang = 'id-ID';
-            utterance.rate = 0.95;
-            utterance.pitch = 1.2;
-            window.speechSynthesis.speak(utterance);
-          } catch (e) {}
-        }
+        console.warn('Google TTS audio play blocked or failed:', err);
       });
 
       const timer = setTimeout(() => {
@@ -88,9 +73,6 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
         if (activeAudioRef.current) {
           activeAudioRef.current.pause();
           activeAudioRef.current = null;
-        }
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
         }
       };
     }

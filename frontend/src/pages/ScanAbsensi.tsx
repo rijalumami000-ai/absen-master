@@ -44,23 +44,10 @@ export const ScanAbsensi: React.FC = () => {
     time: '',
   });
 
-  // Clock Ticker & SpeechSynthesis Auto-Unlock
+  // Clock Ticker
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-
-    const unlockSpeech = () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.resume();
-      }
-    };
-    window.addEventListener('click', unlockSpeech, { once: true });
-    window.addEventListener('touchstart', unlockSpeech, { once: true });
-
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener('click', unlockSpeech);
-      window.removeEventListener('touchstart', unlockSpeech);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   // Fetch initial logs for today
