@@ -45,34 +45,72 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
     if (isOpen) {
       setImgError(false);
 
-      // Stop any existing playing audio to prevent double sound
+      // Clean up any ongoing audio or speech
       if (activeAudioRef.current) {
         activeAudioRef.current.pause();
         activeAudioRef.current.currentTime = 0;
         activeAudioRef.current = null;
       }
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
 
-      // Play Google Text-to-Speech (TTS) Female Voice ONLY (Backend Proxy)
       const speechText = `${santriName} sudah absen sholat ${prayerTime}`;
       const ttsUrl = `/api/attendance/tts?text=${encodeURIComponent(speechText)}`;
+
+      let hasPlayedPrimary = false;
+
+      const playWebSpeechFallback = () => {
+        if (hasPlayedPrimary) return; // Prevent double playback if primary audio already started
+        if ('speechSynthesis' in window) {
+          try {
+            window.speechSynthesis.cancel();
+            if (window.speechSynthesis.paused) {
+              window.speechSynthesis.resume();
+            }
+            const utterance = new SpeechSynthesisUtterance(speechText);
+            utterance.lang = 'id-ID';
+            utterance.rate = 0.95;
+            utterance.pitch = 1.2; // Female voice pitch
+            utterance.volume = 1.0;
+
+            const voices = window.speechSynthesis.getVoices();
+            const femaleVoice = voices.find(
+              v => v.lang.toLowerCase().includes('id') &&
+              (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('gadis') || v.name.toLowerCase().includes('indonesia') || v.name.toLowerCase().includes('zira'))
+            ) || voices.find(v => v.lang.toLowerCase().includes('id'));
+            if (femaleVoice) utterance.voice = femaleVoice;
+
+            window.speechSynthesis.speak(utterance);
+          } catch (e) {}
+        }
+      };
 
       const audio = new Audio(ttsUrl);
       audio.volume = 1.0;
       activeAudioRef.current = audio;
 
+      audio.onplay = () => {
+        hasPlayedPrimary = true;
+      };
+
       audio.play().catch((err) => {
-        console.warn('Google TTS audio play blocked or failed:', err);
+        console.warn('Google TTS audio playback blocked or failed, using browser voice fallback:', err);
+        playWebSpeechFallback();
       });
 
       const timer = setTimeout(() => {
         onClose();
-      }, 4000); // Auto close after 4 seconds
+      }, 4500); // Auto close after 4.5 seconds
 
       return () => {
         clearTimeout(timer);
         if (activeAudioRef.current) {
           activeAudioRef.current.pause();
           activeAudioRef.current = null;
+        }
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
         }
       };
     }

@@ -44,10 +44,28 @@ export const ScanAbsensi: React.FC = () => {
     time: '',
   });
 
-  // Clock Ticker
+  // Clock Ticker & Media Autoplay Policy Unlocker
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
+
+    const unlockAudioEngine = () => {
+      try {
+        const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+        silentAudio.play().catch(() => {});
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener('click', unlockAudioEngine, { once: true });
+    window.addEventListener('touchstart', unlockAudioEngine, { once: true });
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('click', unlockAudioEngine);
+      window.removeEventListener('touchstart', unlockAudioEngine);
+    };
   }, []);
 
   // Fetch initial logs for today
