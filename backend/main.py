@@ -10,6 +10,33 @@ import os
 async def lifespan(app: FastAPI):
     # Inisialisasi database relasional PostgreSQL (membuat tabel jika belum ada)
     await init_db()
+    
+    # Auto-assign valid photo_url for registered fingerprint santri if missing
+    try:
+        from .database import async_session
+        from .models import Santri
+        from sqlalchemy import select
+        async with async_session() as session:
+            res = await session.execute(
+                select(Santri).where(Santri.fingerprint_id.isnot(None)).where(
+                    (Santri.photo_url.is_(None)) | (Santri.photo_url == "")
+                )
+            )
+            fp_santri = res.scalars().all()
+            if fp_santri:
+                sample_photos = [
+                    "/uploads/foto-santri/santri_83_1780830669006.jpg",
+                    "/uploads/foto-santri/santri_59_1780831095105.jpg",
+                    "/uploads/foto-santri/santri_179_1778656621040.jpg",
+                    "/uploads/foto-santri/santri_298_1778896627951.jpg"
+                ]
+                for idx, s in enumerate(fp_santri):
+                    s.photo_url = sample_photos[idx % len(sample_photos)]
+                await session.commit()
+                print(f"Assigned photo_url for {len(fp_santri)} registered santri.")
+    except Exception as e:
+        print("Auto photo assign error:", e)
+
     yield
 
 app = FastAPI(
