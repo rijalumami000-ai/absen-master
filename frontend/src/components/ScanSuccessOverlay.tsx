@@ -25,6 +25,9 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
 }) => {
   const [imgError, setImgError] = React.useState(false);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const lastPlayedKeyRef = useRef<string>('');
 
   const formatPhotoUrl = (url?: string) => {
     if (!url) return '';
@@ -45,76 +48,83 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
     if (isOpen) {
       setImgError(false);
 
-      // Clean up any ongoing audio or speech
+      const currentScanKey = `${santriName}_${prayerTime}_${time}`;
+
+      // ONLY play audio once per unique scan event (ignore parent clock re-renders)
+      if (lastPlayedKeyRef.current !== currentScanKey) {
+        lastPlayedKeyRef.current = currentScanKey;
+
+        // Clean up any ongoing previous audio
+        if (activeAudioRef.current) {
+          activeAudioRef.current.pause();
+          activeAudioRef.current.currentTime = 0;
+          activeAudioRef.current = null;
+        }
+
+        const speechText = `${santriName} sudah absen sholat ${prayerTime}`;
+        const ttsUrl = `/api/attendance/tts?text=${encodeURIComponent(speechText)}`;
+
+        let hasPlayedPrimary = false;
+
+        const playWebSpeechFallback = () => {
+          if (hasPlayedPrimary) return; // Prevent double playback if primary audio already started
+          if ('speechSynthesis' in window) {
+            try {
+              window.speechSynthesis.cancel();
+              if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+              }
+              const utterance = new SpeechSynthesisUtterance(speechText);
+              utterance.lang = 'id-ID';
+              utterance.rate = 0.95;
+              utterance.pitch = 1.2; // Female voice pitch
+              utterance.volume = 1.0;
+
+              const voices = window.speechSynthesis.getVoices();
+              const femaleVoice = voices.find(
+                v => v.lang.toLowerCase().includes('id') &&
+                (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('gadis') || v.name.toLowerCase().includes('indonesia') || v.name.toLowerCase().includes('zira'))
+              ) || voices.find(v => v.lang.toLowerCase().includes('id'));
+              if (femaleVoice) utterance.voice = femaleVoice;
+
+              window.speechSynthesis.speak(utterance);
+            } catch (e) {}
+          }
+        };
+
+        const audio = new Audio(ttsUrl);
+        audio.volume = 1.0;
+        activeAudioRef.current = audio;
+
+        audio.onplay = () => {
+          hasPlayedPrimary = true;
+        };
+
+        audio.play().catch((err) => {
+          console.warn('Google TTS audio playback blocked or failed, using browser voice fallback:', err);
+          playWebSpeechFallback();
+        });
+      }
+
+      const timer = setTimeout(() => {
+        onCloseRef.current();
+      }, 4500); // Auto close after 4.5 seconds
+
+      return () => {
+        clearTimeout(timer);
+      };
+    } else {
+      // Reset scan key and stop audio when overlay closes
+      lastPlayedKeyRef.current = '';
       if (activeAudioRef.current) {
         activeAudioRef.current.pause();
-        activeAudioRef.current.currentTime = 0;
         activeAudioRef.current = null;
       }
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
-
-      const speechText = `${santriName} sudah absen sholat ${prayerTime}`;
-      const ttsUrl = `/api/attendance/tts?text=${encodeURIComponent(speechText)}`;
-
-      let hasPlayedPrimary = false;
-
-      const playWebSpeechFallback = () => {
-        if (hasPlayedPrimary) return; // Prevent double playback if primary audio already started
-        if ('speechSynthesis' in window) {
-          try {
-            window.speechSynthesis.cancel();
-            if (window.speechSynthesis.paused) {
-              window.speechSynthesis.resume();
-            }
-            const utterance = new SpeechSynthesisUtterance(speechText);
-            utterance.lang = 'id-ID';
-            utterance.rate = 0.95;
-            utterance.pitch = 1.2; // Female voice pitch
-            utterance.volume = 1.0;
-
-            const voices = window.speechSynthesis.getVoices();
-            const femaleVoice = voices.find(
-              v => v.lang.toLowerCase().includes('id') &&
-              (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('gadis') || v.name.toLowerCase().includes('indonesia') || v.name.toLowerCase().includes('zira'))
-            ) || voices.find(v => v.lang.toLowerCase().includes('id'));
-            if (femaleVoice) utterance.voice = femaleVoice;
-
-            window.speechSynthesis.speak(utterance);
-          } catch (e) {}
-        }
-      };
-
-      const audio = new Audio(ttsUrl);
-      audio.volume = 1.0;
-      activeAudioRef.current = audio;
-
-      audio.onplay = () => {
-        hasPlayedPrimary = true;
-      };
-
-      audio.play().catch((err) => {
-        console.warn('Google TTS audio playback blocked or failed, using browser voice fallback:', err);
-        playWebSpeechFallback();
-      });
-
-      const timer = setTimeout(() => {
-        onClose();
-      }, 4500); // Auto close after 4.5 seconds
-
-      return () => {
-        clearTimeout(timer);
-        if (activeAudioRef.current) {
-          activeAudioRef.current.pause();
-          activeAudioRef.current = null;
-        }
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-        }
-      };
     }
-  }, [isOpen, santriName, prayerTime, onClose]);
+  }, [isOpen, santriName, prayerTime, time]);
 
   const formattedPhoto = formatPhotoUrl(photoUrl);
 
