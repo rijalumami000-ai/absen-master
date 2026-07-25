@@ -80,6 +80,7 @@ async def sync_sekolah_info_internal(db: AsyncSession, sekolah_db: AsyncSession)
         JOIN santri s ON sta.santri_id = s.id
         LEFT JOIN kamar k ON sta.kamar_id = k.id
         WHERE sta.tahun_ajaran_id = :year_id
+          AND LOWER(sta.status) = 'aktif'
     """)
     student_result = await sekolah_db.execute(student_query, {"year_id": active_sy_id})
     sekolah_students = student_result.fetchall()
