@@ -68,6 +68,10 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private val _santriList = MutableStateFlow<List<SantriEntity>>(emptyList())
     val santriList: StateFlow<List<SantriEntity>> = _santriList
 
+    // All registered santri across ALL rooms/genders
+    private val _allRegisteredSantri = MutableStateFlow<List<SantriEntity>>(emptyList())
+    val allRegisteredSantri: StateFlow<List<SantriEntity>> = _allRegisteredSantri
+
     private val _attendanceStates = MutableStateFlow<Map<Int, String>>(emptyMap())
     val attendanceStates: StateFlow<Map<Int, String>> = _attendanceStates
 
@@ -120,7 +124,10 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             current[santriId] = status
             _attendanceStates.value = current
 
-            val santri = _santriList.value.firstOrNull { it.id == santriId } ?: return@launch
+            val santri = _santriList.value.firstOrNull { it.id == santriId }
+                ?: _allRegisteredSantri.value.firstOrNull { it.id == santriId }
+                ?: return@launch
+
             val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             val sdfFull = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
             val todayStr = sdfDate.format(Date())
@@ -216,7 +223,6 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                     if (inEndpoint != null) {
                         val len = connection.bulkTransfer(inEndpoint, buffer, buffer.size, 1000)
                         if (len > 0) {
-                            // Extract fingerprint ID bytes
                             val rawData = String(buffer, 0, len).trim()
                             if (rawData.isNotEmpty()) {
                                 withContext(Dispatchers.Main) {
@@ -249,6 +255,9 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             val list = repository.getSantriFiltered(_selectedGender.value, _selectedRoom.value)
             _santriList.value = list
 
+            val allRegistered = repository.getAllRegisteredSantri()
+            _allRegisteredSantri.value = allRegistered
+
             val states = _attendanceStates.value.toMutableMap()
             list.forEach {
                 if (!states.containsKey(it.id)) {
@@ -278,7 +287,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     fun onSensorTouchedOrScanned(fpId: String? = null) {
         viewModelScope.launch {
             // Ensure local DB has data
-            if (_santriList.value.isEmpty()) {
+            if (_santriList.value.isEmpty() || _allRegisteredSantri.value.isEmpty()) {
                 repository.syncData()
                 loadManualAttendanceData()
             }
@@ -286,7 +295,6 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             val cleanFpId = fpId?.trim()
 
             if (cleanFpId.isNullOrEmpty()) {
-                // If circle on screen is tapped without a scanned fingerprint ID from hardware
                 _sensorStatusMessage.value = "Tempelkan jari Anda pada sensor USB OTG"
                 _scanErrorMessage.value = "Silakan tempelkan jari pada sensor fisik"
                 delay(2500)
@@ -295,8 +303,9 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 return@launch
             }
 
-            // Query database by scanned Fingerprint ID
+            // Query database by scanned Fingerprint ID across ALL registered santri
             val santri = repository.getSantriByFingerprintId(cleanFpId)
+                ?: _allRegisteredSantri.value.firstOrNull { it.fingerprintId == cleanFpId }
                 ?: _santriList.value.firstOrNull { it.fingerprintId == cleanFpId }
 
             if (santri != null) {

@@ -50,14 +50,10 @@ fun HomeScreen(
     val sensorStatusMessage by viewModel.sensorStatusMessage.collectAsState()
     val lastMatchedSantri by viewModel.lastMatchedSantri.collectAsState()
     val scanErrorMessage by viewModel.scanErrorMessage.collectAsState()
-    val santriList by viewModel.santriList.collectAsState()
+    val allRegisteredSantri by viewModel.allRegisteredSantri.collectAsState()
 
     var testDialogVisible by remember { mutableStateOf(false) }
     var inputFpId by remember { mutableStateOf("") }
-
-    val registeredSantri = remember(santriList) {
-        santriList.filter { !it.fingerprintId.isNullOrEmpty() }
-    }
 
     // Smooth pulse animation for scanner ring
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -299,7 +295,7 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(28.dp))
 
-                    // GLOWING SCANNER PAD CIRCLE (Tapping opens Fingerprint Selector/Test Dialog)
+                    // GLOWING SCANNER PAD CIRCLE
                     Box(
                         modifier = Modifier
                             .size(150.dp)
@@ -480,7 +476,7 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "Daftar Santri dengan Sidik Jari Terdaftar (${registeredSantri.size}):",
+                            text = "Daftar Santri dengan Sidik Jari Terdaftar (${allRegisteredSantri.size}):",
                             fontSize = 12.sp,
                             color = Slate400,
                             fontWeight = FontWeight.Medium
@@ -488,7 +484,7 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        if (registeredSantri.isEmpty()) {
+                        if (allRegisteredSantri.isEmpty()) {
                             Text(
                                 text = "Belum ada sidik jari terdaftar di database. Tekan 🔄 Sync di kanan atas untuk mengunduh.",
                                 fontSize = 12.sp,
@@ -501,7 +497,7 @@ fun HomeScreen(
                                     .fillMaxWidth()
                                     .heightIn(max = 240.dp)
                             ) {
-                                items(registeredSantri) { santri ->
+                                items(allRegisteredSantri) { santri ->
                                     Surface(
                                         onClick = {
                                             testDialogVisible = false
@@ -520,7 +516,7 @@ fun HomeScreen(
                                         ) {
                                             Column {
                                                 Text(santri.name, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                                Text("Kamar ${santri.room}", fontSize = 11.sp, color = Slate400)
+                                                Text("Kamar ${santri.room} • ${santri.gender}", fontSize = 11.sp, color = Slate400)
                                             }
                                             Text(
                                                 text = "ID: ${santri.fingerprintId ?: santri.id}",
