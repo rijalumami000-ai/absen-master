@@ -14,6 +14,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -48,6 +50,14 @@ fun HomeScreen(
     val sensorStatusMessage by viewModel.sensorStatusMessage.collectAsState()
     val lastMatchedSantri by viewModel.lastMatchedSantri.collectAsState()
     val scanErrorMessage by viewModel.scanErrorMessage.collectAsState()
+    val santriList by viewModel.santriList.collectAsState()
+
+    var testDialogVisible by remember { mutableStateOf(false) }
+    var inputFpId by remember { mutableStateOf("") }
+
+    val registeredSantri = remember(santriList) {
+        santriList.filter { !it.fingerprintId.isNullOrEmpty() }
+    }
 
     // Smooth pulse animation for scanner ring
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -67,9 +77,9 @@ fun HomeScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF090D16), // Dark Slate 950
-                        Color(0xFF0F172A), // Dark Slate 900
-                        Color(0xFF1E293B)  // Slate 800
+                        Color(0xFF090D16),
+                        Color(0xFF0F172A),
+                        Color(0xFF1E293B)
                     )
                 )
             )
@@ -112,7 +122,7 @@ fun HomeScreen(
                     )
                 }
 
-                // GLASS REFRESH / SYNC BUTTON
+                // REFRESH / SYNC BUTTON
                 Surface(
                     onClick = { viewModel.syncDatabase() },
                     enabled = !isSyncing,
@@ -143,7 +153,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // MODERN ULTRA-SLEEK CLOCK & PRAYER BANNER (Request #2)
+            // CLOCK & PRAYER BANNER
             Surface(
                 shape = RoundedCornerShape(26.dp),
                 color = Color.White.copy(alpha = 0.05f),
@@ -289,7 +299,7 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(28.dp))
 
-                    // GLOWING SCANNER PAD CIRCLE
+                    // GLOWING SCANNER PAD CIRCLE (Tapping opens Fingerprint Selector/Test Dialog)
                     Box(
                         modifier = Modifier
                             .size(150.dp)
@@ -312,8 +322,7 @@ fun HomeScreen(
                                 CircleShape
                             )
                             .clickable {
-                                // Touch sensor trigger: matches fingerprint & triggers audio + popup
-                                viewModel.onSensorTouchedOrScanned()
+                                testDialogVisible = true
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -338,7 +347,7 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = if (isSensorConnected) "Tempelkan jari ke sensor USB OTG / Sentuh ikon" else "Colokkan kabel OTG sensor sidik jari ke HP",
+                        text = "Tempelkan jari ke sensor USB OTG atau sentuh ikon untuk tes",
                         fontSize = 11.sp,
                         color = Emerald400,
                         fontWeight = FontWeight.Medium,
@@ -369,8 +378,8 @@ fun HomeScreen(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                Color(0xFF6366F1), // Indigo 500
-                                Color(0xFF4F46E5)  // Indigo 600
+                                Color(0xFF6366F1),
+                                Color(0xFF4F46E5)
                             )
                         ),
                         shape = RoundedCornerShape(20.dp)
@@ -391,7 +400,145 @@ fun HomeScreen(
             }
         }
 
-        // FULL POPUP OVERLAY ON SCAN SUCCESS (Request #1: Popup Absensi Berhasil Seperti di Web)
+        // FINGERPRINT TEST / SELECTOR MODAL DIALOG
+        if (testDialogVisible) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.75f))
+                    .clickable { testDialogVisible = false },
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color(0xFF0F172A),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400),
+                    modifier = Modifier
+                        .fillMaxWidth(0.92f)
+                        .padding(16.dp)
+                        .clickable(enabled = false) {}
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "☝️ TES SIDIK JARI TERDAFTAR",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Emerald400
+                            )
+                            IconButton(onClick = { testDialogVisible = false }) {
+                                Text("✕", color = Color.White, fontSize = 18.sp)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // MANUAL ID INPUT FIELD
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = inputFpId,
+                                onValueChange = { inputFpId = it },
+                                placeholder = { Text("Ketik FP ID / Santri ID...", color = Slate400, fontSize = 12.sp) },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                    unfocusedContainerColor = Color.White.copy(alpha = 0.03f),
+                                    focusedBorderColor = Emerald400,
+                                    unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    if (inputFpId.isNotEmpty()) {
+                                        testDialogVisible = false
+                                        viewModel.onSensorTouchedOrScanned(inputFpId)
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("TES", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Daftar Santri dengan Sidik Jari Terdaftar (${registeredSantri.size}):",
+                            fontSize = 12.sp,
+                            color = Slate400,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (registeredSantri.isEmpty()) {
+                            Text(
+                                text = "Belum ada sidik jari terdaftar di database. Tekan 🔄 Sync di kanan atas untuk mengunduh.",
+                                fontSize = 12.sp,
+                                color = Red500,
+                                modifier = Modifier.padding(vertical = 12.dp)
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 240.dp)
+                            ) {
+                                items(registeredSantri) { santri ->
+                                    Surface(
+                                        onClick = {
+                                            testDialogVisible = false
+                                            viewModel.onSensorTouchedOrScanned(santri.fingerprintId ?: santri.id.toString())
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = Color.White.copy(alpha = 0.05f),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(santri.name, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                Text("Kamar ${santri.room}", fontSize = 11.sp, color = Slate400)
+                                            }
+                                            Text(
+                                                text = "ID: ${santri.fingerprintId ?: santri.id}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Emerald400
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // FULL POPUP OVERLAY ON SCAN SUCCESS
         AnimatedVisibility(
             visible = lastMatchedSantri != null,
             enter = fadeIn() + slideInVertically(initialOffsetY = { it }),

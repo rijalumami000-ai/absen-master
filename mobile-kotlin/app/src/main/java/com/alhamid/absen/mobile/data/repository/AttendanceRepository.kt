@@ -26,10 +26,11 @@ class AttendanceRepository(context: Context) {
     }
 
     suspend fun getSantriByFingerprintId(fpId: String): SantriEntity? = withContext(Dispatchers.IO) {
-        santriDao.getSantriByFingerprintId(fpId)
+        val cleanId = fpId.trim()
+        santriDao.getSantriByFingerprintId(cleanId) ?: santriDao.getSantriById(cleanId.toIntOrNull() ?: -1)
     }
 
-    // Sync remote data into local database
+    // Sync remote data into local database with robust ID & Template mapping
     suspend fun syncData(): Boolean = withContext(Dispatchers.IO) {
         try {
             val santriRes = api.getSantriList()
@@ -39,24 +40,28 @@ class AttendanceRepository(context: Context) {
                 val remoteSantri = santriRes.body() ?: emptyList()
                 val remoteTemplates = templatesRes.body() ?: emptyList()
 
-                // Create a map of fingerprint_id -> template_data
-                val templateMap = remoteTemplates.associate { it.fingerprintId to it.templateData }
+                // Create maps linking santri_id -> fingerprint_id and template_data
+                val santriIdToFpIdMap = remoteTemplates.associate { it.santriId to it.fingerprintId }
+                val santriIdToTemplateMap = remoteTemplates.associate { it.santriId to it.templateData }
 
-                // Map remote DTO to Room Entity
+                // Map remote DTO to Room Entity with fallback linking by santri_id
                 val santriEntities = remoteSantri.map { dto ->
+                    val fpId = dto.fingerprintId ?: santriIdToFpIdMap[dto.id]
+                    val fpTemplate = santriIdToTemplateMap[dto.id] ?: ""
+
                     SantriEntity(
                         id = dto.id,
                         name = dto.name,
                         gender = dto.gender,
                         room = dto.room,
-                        fingerprintId = dto.fingerprintId,
-                        fingerprintTemplate = templateMap[dto.fingerprintId] ?: "",
+                        fingerprintId = fpId,
+                        fingerprintTemplate = fpTemplate,
                         academicYearId = dto.academicYearId,
                         photoUrl = dto.photoUrl
                     )
                 }
 
-                // SQLite write Transactional write
+                // SQLite write Transaction
                 santriDao.clearAllSantri()
                 santriDao.insertSantriList(santriEntities)
 
@@ -81,7 +86,6 @@ class AttendanceRepository(context: Context) {
         scannedAt: String,
         academicYearId: Int?
     ): Boolean = withContext(Dispatchers.IO) {
-        // Attempt posting to server first
         val request = AttendanceRequest(
             prayerTime = prayerTime,
             date = date,
@@ -91,7 +95,6 @@ class AttendanceRepository(context: Context) {
         try {
             val res = api.postAttendance(request)
             if (res.isSuccessful) {
-                // If success, attempt syncing previous queues if any
                 syncQueuedAttendance()
                 return@withContext true
             }
@@ -132,7 +135,7 @@ class AttendanceRepository(context: Context) {
                 }
             } catch (e: Exception) {
                 Log.e("AttendanceRepository", "Syncing queue item ID: ${item.id} failed", e)
-                break // Stop sync if internet disconnected again
+                break
             }
         }
     }

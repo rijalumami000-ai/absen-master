@@ -19,6 +19,9 @@ interface SantriDao {
     @Query("SELECT * FROM santri WHERE fingerprintId = :fpId LIMIT 1")
     suspend fun getSantriByFingerprintId(fpId: String): SantriEntity?
 
+    @Query("SELECT * FROM santri WHERE id = :id LIMIT 1")
+    suspend fun getSantriById(id: Int): SantriEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSantriList(santri: List<SantriEntity>)
 
