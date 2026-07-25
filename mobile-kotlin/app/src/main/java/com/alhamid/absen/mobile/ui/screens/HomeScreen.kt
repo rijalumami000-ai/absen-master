@@ -1,11 +1,6 @@
 package com.alhamid.absen.mobile.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -14,8 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -23,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -46,26 +38,8 @@ fun HomeScreen(
     val isSyncing by viewModel.isSyncing.collectAsState()
     val lastSyncText by viewModel.lastSyncText.collectAsState()
 
-    val isSensorConnected by viewModel.isSensorConnected.collectAsState()
-    val sensorStatusMessage by viewModel.sensorStatusMessage.collectAsState()
     val lastMatchedSantri by viewModel.lastMatchedSantri.collectAsState()
-    val scanErrorMessage by viewModel.scanErrorMessage.collectAsState()
-    val allRegisteredSantri by viewModel.allRegisteredSantri.collectAsState()
-
-    var testDialogVisible by remember { mutableStateOf(false) }
-    var inputFpId by remember { mutableStateOf("") }
-
-    // Smooth pulse animation for scanner ring
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
+    val santriList by viewModel.santriList.collectAsState()
 
     Box(
         modifier = Modifier
@@ -104,7 +78,7 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "SISTEM ABSENSI BIOMETRIK",
+                        text = "SISTEM ABSENSI SANTRI",
                         fontSize = 19.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Black,
@@ -149,7 +123,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // CLOCK & PRAYER BANNER
+            // MODERN DIGITAL CLOCK & LIVE PRAYER CARD
             Surface(
                 shape = RoundedCornerShape(26.dp),
                 color = Color.White.copy(alpha = 0.05f),
@@ -226,7 +200,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // MAIN SENSOR SCANNER CONTAINER
+            // DASHBOARD HERO CARD
             Surface(
                 shape = RoundedCornerShape(28.dp),
                 color = Color.White.copy(alpha = 0.04f),
@@ -241,116 +215,85 @@ fun HomeScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(20.dp),
+                        .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // HARDWARE STATUS BADGE
                     Surface(
                         shape = CircleShape,
-                        color = when {
-                            scanErrorMessage != null -> Red500.copy(alpha = 0.15f)
-                            isSensorConnected -> Emerald500.copy(alpha = 0.15f)
-                            else -> Amber500.copy(alpha = 0.15f)
-                        },
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            when {
-                                scanErrorMessage != null -> Red500.copy(alpha = 0.4f)
-                                isSensorConnected -> Emerald400.copy(alpha = 0.4f)
-                                else -> Amber500.copy(alpha = 0.4f)
-                            }
-                        )
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        when {
-                                            scanErrorMessage != null -> Red500
-                                            isSensorConnected -> Emerald400
-                                            else -> Amber500
-                                        }
-                                    )
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (isSensorConnected) "SENSOR USB ONLINE" else "SENSOR TERPUTUS",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = when {
-                                    scanErrorMessage != null -> Red500
-                                    isSensorConnected -> Emerald400
-                                    else -> Amber500
-                                },
-                                letterSpacing = 1.sp
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(28.dp))
-
-                    // GLOWING SCANNER PAD CIRCLE
-                    Box(
-                        modifier = Modifier
-                            .size(150.dp)
-                            .scale(if (isSensorConnected) pulseScale else 1f)
-                            .clip(CircleShape)
-                            .background(
-                                when {
-                                    scanErrorMessage != null -> Red500.copy(alpha = 0.15f)
-                                    isSensorConnected -> Emerald500.copy(alpha = 0.12f)
-                                    else -> Color.White.copy(alpha = 0.03f)
-                                }
-                            )
-                            .border(
-                                2.dp,
-                                when {
-                                    scanErrorMessage != null -> Red500
-                                    isSensorConnected -> Emerald400
-                                    else -> Color.White.copy(alpha = 0.15f)
-                                },
-                                CircleShape
-                            )
-                            .clickable {
-                                testDialogVisible = true
-                            },
-                        contentAlignment = Alignment.Center
+                        color = Color(0xFF6366F1).copy(alpha = 0.15f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF818CF8).copy(alpha = 0.4f))
                     ) {
                         Text(
-                            text = if (isSensorConnected) "☝️" else "🔌",
-                            fontSize = 64.sp,
-                            textAlign = TextAlign.Center
+                            text = "📖 MODUL ABSENSI DIGITAL",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF818CF8),
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                         )
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
-                        text = sensorStatusMessage,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (scanErrorMessage != null) Red500 else Color.White,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        text = "Tempelkan jari ke sensor USB OTG atau sentuh ikon untuk tes",
-                        fontSize = 11.sp,
-                        color = Emerald400,
-                        fontWeight = FontWeight.Medium,
+                        text = "Absensi Santri Real-Time",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
                         textAlign = TextAlign.Center
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Kelola kehadiran santri untuk sholat berjamaah dengan cepat dan langsung tersimpan ke server cloud.",
+                        fontSize = 13.sp,
+                        color = Slate400,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 19.sp,
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    // STATS ROW CARD
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White.copy(alpha = 0.05f),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("SANTRI", fontSize = 10.sp, color = Slate400, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("${santriList.size}", fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Black)
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White.copy(alpha = 0.05f),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("SHOLAT", fontSize = 10.sp, color = Slate400, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(viewModel.getActiveSholat(), fontSize = 18.sp, color = Emerald400, fontWeight = FontWeight.Black)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
                         text = lastSyncText,
@@ -362,7 +305,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // BOTTOM NAVIGATION BUTTON: GO TO MANUAL ATTENDANCE
+            // PRIMARY ACTION BUTTON: BUKA ABSENSI MANUAL
             Button(
                 onClick = onNavigateToManual,
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
@@ -370,7 +313,7 @@ fun HomeScreen(
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(58.dp)
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
@@ -387,8 +330,8 @@ fun HomeScreen(
                 ) {
                     Text(
                         text = "📋  BUKA ABSENSI MANUAL",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black,
                         color = Color.White,
                         letterSpacing = 0.5.sp
                     )
@@ -396,145 +339,7 @@ fun HomeScreen(
             }
         }
 
-        // FINGERPRINT TEST / SELECTOR MODAL DIALOG
-        if (testDialogVisible) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.75f))
-                    .clickable { testDialogVisible = false },
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFF0F172A),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400),
-                    modifier = Modifier
-                        .fillMaxWidth(0.92f)
-                        .padding(16.dp)
-                        .clickable(enabled = false) {}
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "☝️ TES SIDIK JARI TERDAFTAR",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Emerald400
-                            )
-                            IconButton(onClick = { testDialogVisible = false }) {
-                                Text("✕", color = Color.White, fontSize = 18.sp)
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // MANUAL ID INPUT FIELD
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedTextField(
-                                value = inputFpId,
-                                onValueChange = { inputFpId = it },
-                                placeholder = { Text("Ketik FP ID / Santri ID...", color = Slate400, fontSize = 12.sp) },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
-                                    unfocusedContainerColor = Color.White.copy(alpha = 0.03f),
-                                    focusedBorderColor = Emerald400,
-                                    unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
-                                onClick = {
-                                    if (inputFpId.isNotEmpty()) {
-                                        testDialogVisible = false
-                                        viewModel.onSensorTouchedOrScanned(inputFpId)
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("TES", fontWeight = FontWeight.Bold)
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Daftar Santri dengan Sidik Jari Terdaftar (${allRegisteredSantri.size}):",
-                            fontSize = 12.sp,
-                            color = Slate400,
-                            fontWeight = FontWeight.Medium
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        if (allRegisteredSantri.isEmpty()) {
-                            Text(
-                                text = "Belum ada sidik jari terdaftar di database. Tekan 🔄 Sync di kanan atas untuk mengunduh.",
-                                fontSize = 12.sp,
-                                color = Red500,
-                                modifier = Modifier.padding(vertical = 12.dp)
-                            )
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 240.dp)
-                            ) {
-                                items(allRegisteredSantri) { santri ->
-                                    Surface(
-                                        onClick = {
-                                            testDialogVisible = false
-                                            viewModel.onSensorTouchedOrScanned(santri.fingerprintId ?: santri.id.toString())
-                                        },
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = Color.White.copy(alpha = 0.05f),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(12.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Column {
-                                                Text(santri.name, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                                Text("Kamar ${santri.room} • ${santri.gender}", fontSize = 11.sp, color = Slate400)
-                                            }
-                                            Text(
-                                                text = "ID: ${santri.fingerprintId ?: santri.id}",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Emerald400
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // FULL POPUP OVERLAY ON SCAN SUCCESS
+        // FULL POPUP OVERLAY ON MATCH (Kept intact for biometrics background engine)
         AnimatedVisibility(
             visible = lastMatchedSantri != null,
             enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
@@ -562,7 +367,6 @@ fun HomeScreen(
                                 .padding(28.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // SUCCESS BADGE HEADER
                             Surface(
                                 shape = CircleShape,
                                 color = Emerald500.copy(alpha = 0.2f),
@@ -586,7 +390,6 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.height(24.dp))
 
-                            // SANTRI PROFILE PHOTO
                             Box(
                                 modifier = Modifier
                                     .size(110.dp)
@@ -617,7 +420,6 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.height(20.dp))
 
-                            // SANTRI NAME
                             Text(
                                 text = santri.name,
                                 fontSize = 22.sp,
@@ -628,7 +430,6 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.height(6.dp))
 
-                            // ROOM & GENDER DETAILS
                             Text(
                                 text = "Kamar ${santri.room} • ${santri.gender}",
                                 fontSize = 14.sp,
@@ -664,7 +465,6 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.height(24.dp))
 
-                            // CLOSE BUTTON
                             Button(
                                 onClick = { viewModel.dismissMatchedOverlay() },
                                 colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
