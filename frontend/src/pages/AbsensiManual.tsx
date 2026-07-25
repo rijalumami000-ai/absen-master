@@ -105,11 +105,21 @@ export const AbsensiManual: React.FC = () => {
     s.room.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleStatusChange = (santriId: number, status: string) => {
+  const handleStatusChange = async (santriId: number, status: string) => {
     setAttendanceMap(prev => ({
       ...prev,
       [santriId]: status
     }));
+
+    try {
+      await attendanceService.saveManual({
+        prayer_time: prayerTime,
+        date: date,
+        items: [{ santri_id: santriId, status: status }]
+      });
+    } catch (err) {
+      console.error("Instant save error:", err);
+    }
   };
 
   const handleSave = async () => {
@@ -158,6 +168,8 @@ export const AbsensiManual: React.FC = () => {
     { label: 'Masbuq', value: 'Masbuq', className: 'badge-masbuq' },
     { label: 'Haid', value: 'Haid', className: 'badge-haid' },
     { label: 'Istihadhoh', value: 'Istihadhoh', className: 'badge-istihadhoh' },
+    { label: 'Tugas', value: 'Tugas', className: 'badge-tugas' },
+    { label: 'Terlambat', value: 'Terlambat', className: 'badge-terlambat' },
   ];
 
   return (
