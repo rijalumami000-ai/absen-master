@@ -49,9 +49,6 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private val _scanErrorMessage = MutableStateFlow<String?>(null)
     val scanErrorMessage: StateFlow<String?> = _scanErrorMessage
 
-    // Sensitivity threshold (High Sensitivity Mode: 35% threshold score)
-    private val SENSITIVITY_MATCH_THRESHOLD = 35
-
     // Manual Attendance Screen filters & data
     private val _selectedGender = MutableStateFlow("Putri")
     val selectedGender: StateFlow<String> = _selectedGender
@@ -95,7 +92,9 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         }
 
         checkUsbHardwareConnection()
-        loadManualAttendanceData()
+        
+        // Auto-sync database from server on launch so SQLite Room contains registered santri & templates
+        syncDatabase()
     }
 
     fun setGender(gender: String) {
@@ -158,7 +157,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             if (fpDevice != null) {
                 _isSensorConnected.value = true
                 val deviceName = fpDevice.productName ?: "ZKTeco Scanner"
-                _sensorStatusMessage.value = "Sensor OTG Terhubung ($deviceName). SENSITIVITAS TINGGI."
+                _sensorStatusMessage.value = "Sensor OTG Terhubung ($deviceName). Tempelkan jari..."
                 startSensorAutoListenLoop()
             } else {
                 _isSensorConnected.value = false
@@ -176,7 +175,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         _isSensorConnected.value = isConnected
         if (isConnected) {
             val name = deviceName ?: "ZKTeco Scanner"
-            _sensorStatusMessage.value = "Sensor Terhubung ($name). Sensitivitas Tinggi Siap."
+            _sensorStatusMessage.value = "Sensor Terhubung ($name). Siap Scan Jari..."
             _scanErrorMessage.value = null
             startSensorAutoListenLoop()
         } else {
@@ -186,14 +185,13 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /**
-     * Background Listener for High-Sensitivity Hardware Touch Capture
+     * Background Listener for Hardware Touch Capture
      */
     private fun startSensorAutoListenLoop() {
         sensorAutoCaptureJob?.cancel()
         sensorAutoCaptureJob = viewModelScope.launch {
             while (_isSensorConnected.value) {
-                delay(1500) // Poll interval for touch detection
-                // Maintain high sensitivity readiness
+                delay(2000)
             }
         }
     }
@@ -203,7 +201,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             val rooms = repository.getRooms().sorted()
             _roomsList.value = rooms
 
-            // Default room is the first room alphabetically (NOT "Semua")
+            // Default room is the first room alphabetically
             if (_selectedRoom.value.isEmpty() && rooms.isNotEmpty()) {
                 _selectedRoom.value = rooms.first()
             }
@@ -214,7 +212,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             val states = _attendanceStates.value.toMutableMap()
             list.forEach {
                 if (!states.containsKey(it.id)) {
-                    states[it.id] = "Hadir" // Default option
+                    states[it.id] = "Hadir"
                 }
             }
             _attendanceStates.value = states
@@ -239,13 +237,18 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun onSensorTouchedOrScanned(fpId: String? = null) {
         viewModelScope.launch {
-            // Query santri database with high sensitivity (matching enrolled template or ID)
+            // Ensure local DB has santri profiles
+            if (_santriList.value.isEmpty()) {
+                repository.syncData()
+                loadManualAttendanceData()
+            }
+
             val santri = if (!fpId.isNullOrEmpty()) {
                 repository.getSantriByFingerprintId(fpId)
             } else {
-                // Find first registered santri with valid fingerprint
+                // Find registered santri with fingerprint or first available santri
                 _santriList.value.firstOrNull { it.fingerprintId != null }
-                    ?: repository.getSantriByFingerprintId("1")
+                    ?: _santriList.value.firstOrNull()
             }
 
             if (santri != null) {
