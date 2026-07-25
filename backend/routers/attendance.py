@@ -98,6 +98,11 @@ async def save_manual_attendance(data: AttendanceManualRequest, db: AsyncSession
         saved_count += 1
 
     await db.commit()
+    await sse_manager.broadcast("attendance_updated", {
+        "date": str(target_date),
+        "prayer_time": data.prayer_time,
+        "count": saved_count
+    })
     return {"message": f"Berhasil mencatat {saved_count} data absensi secara manual"}
 
 

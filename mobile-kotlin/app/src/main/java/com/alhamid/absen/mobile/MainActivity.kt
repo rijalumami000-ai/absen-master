@@ -14,13 +14,11 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
 import com.alhamid.absen.mobile.ui.screens.HomeScreen
 import com.alhamid.absen.mobile.ui.screens.ManualAttendanceScreen
+import com.alhamid.absen.mobile.ui.screens.RekapAttendanceScreen
 import com.alhamid.absen.mobile.ui.theme.AbsensiTheme
 import com.alhamid.absen.mobile.ui.viewmodel.AttendanceViewModel
 
@@ -31,40 +29,30 @@ class MainActivity : ComponentActivity() {
     private val scannedBuffer = StringBuilder()
 
     private val usbReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            try {
-                val action = intent?.action
-                if (ACTION_USB_PERMISSION == action) {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                ACTION_USB_PERMISSION -> {
                     synchronized(this) {
-                        val device: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
-                        } else {
-                            @Suppress("DEPRECATION")
-                            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-                        }
-
+                        val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
                         if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                             device?.let {
-                                viewModel.updateUsbDeviceStatus(true, it.productName)
+                                Log.d("MainActivity", "USB Permission Granted: ${it.deviceName}")
+                                viewModel.checkUsbHardwareConnection()
                             }
                         } else {
-                            viewModel.updateUsbDeviceStatus(true, device?.productName ?: "USB OTG Device")
+                            Log.d("MainActivity", "USB Permission Denied")
                         }
                     }
-                } else if (UsbManager.ACTION_USB_DEVICE_ATTACHED == action) {
-                    val device: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-                    }
-                    device?.let { requestUsbPermission(it) }
-                    viewModel.updateUsbDeviceStatus(true, device?.productName)
-                } else if (UsbManager.ACTION_USB_DEVICE_DETACHED == action) {
-                    viewModel.updateUsbDeviceStatus(false, null)
                 }
-            } catch (e: Exception) {
-                Log.e("MainActivity", "USB Receiver error", e)
+                UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
+                    Log.d("MainActivity", "USB Device Attached")
+                    viewModel.checkUsbHardwareConnection()
+                    checkAndRequestUsbDevice()
+                }
+                UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                    Log.d("MainActivity", "USB Device Detached")
+                    viewModel.checkUsbHardwareConnection()
+                }
             }
         }
     }
@@ -72,7 +60,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Safe register USB receiver using ContextCompat
         try {
             val filter = IntentFilter().apply {
                 addAction(ACTION_USB_PERMISSION)
@@ -95,13 +82,17 @@ class MainActivity : ComponentActivity() {
             AbsensiTheme {
                 var currentScreen by remember { mutableStateOf("home") }
 
-                if (currentScreen == "home") {
-                    HomeScreen(
+                when (currentScreen) {
+                    "home" -> HomeScreen(
                         viewModel = viewModel,
-                        onNavigateToManual = { currentScreen = "manual" }
+                        onNavigateToManual = { currentScreen = "manual" },
+                        onNavigateToRekap = { currentScreen = "rekap" }
                     )
-                } else {
-                    ManualAttendanceScreen(
+                    "manual" -> ManualAttendanceScreen(
+                        viewModel = viewModel,
+                        onBack = { currentScreen = "home" }
+                    )
+                    else -> RekapAttendanceScreen(
                         viewModel = viewModel,
                         onBack = { currentScreen = "home" }
                     )
@@ -139,7 +130,7 @@ class MainActivity : ComponentActivity() {
             }
             fpDevice?.let { requestUsbPermission(it) }
         } catch (e: Exception) {
-            Log.e("MainActivity", "USB check error", e)
+            Log.e("MainActivity", "Error checking USB device", e)
         }
     }
 

@@ -1,6 +1,11 @@
 package com.alhamid.absen.mobile.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -16,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -32,7 +38,8 @@ import com.alhamid.absen.mobile.ui.viewmodel.AttendanceViewModel
 @Composable
 fun HomeScreen(
     viewModel: AttendanceViewModel,
-    onNavigateToManual: () -> Unit
+    onNavigateToManual: () -> Unit,
+    onNavigateToRekap: () -> Unit
 ) {
     val timeString by viewModel.timeString.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
@@ -40,6 +47,19 @@ fun HomeScreen(
 
     val lastMatchedSantri by viewModel.lastMatchedSantri.collectAsState()
     val santriList by viewModel.santriList.collectAsState()
+    val activePrayer = viewModel.getActiveSholat()
+
+    // Smooth pulse micro-animation for prayer badge card
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
 
     Box(
         modifier = Modifier
@@ -123,7 +143,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // MODERN DIGITAL CLOCK & LIVE PRAYER CARD
+            // MODERN DIGITAL CLOCK & GLOWING ANIMATED PRAYER CARD
             Surface(
                 shape = RoundedCornerShape(26.dp),
                 color = Color.White.copy(alpha = 0.05f),
@@ -169,7 +189,7 @@ fun HomeScreen(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "WAKTU SHOLAT ${viewModel.getActiveSholat().uppercase()}",
+                                        text = "WAKTU SHOLAT ${activePrayer.uppercase()}",
                                         color = Emerald400,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
@@ -190,10 +210,51 @@ fun HomeScreen(
                             )
                         }
 
-                        Text(
-                            text = "🕌",
-                            fontSize = 48.sp
-                        )
+                        // HIGH-END ANIMATED PRAYER BADGE CARD (Replaces static mosque icon)
+                        Box(
+                            modifier = Modifier
+                                .size(68.dp)
+                                .scale(pulseScale)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(
+                                    Brush.radialGradient(
+                                        colors = listOf(
+                                            Emerald400.copy(alpha = 0.3f),
+                                            Color(0xFF6366F1).copy(alpha = 0.2f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                                .border(
+                                    1.5.dp,
+                                    Brush.linearGradient(
+                                        colors = listOf(Emerald400, Color(0xFF818CF8))
+                                    ),
+                                    RoundedCornerShape(20.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = when (activePrayer) {
+                                        "Subuh" -> "🌙"
+                                        "Dzuhur" -> "☀️"
+                                        "Ashar" -> "🌤️"
+                                        "Maghrib" -> "🌅"
+                                        else -> "✨"
+                                    },
+                                    fontSize = 24.sp
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = activePrayer.uppercase(),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -225,7 +286,7 @@ fun HomeScreen(
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF818CF8).copy(alpha = 0.4f))
                     ) {
                         Text(
-                            text = "📖 MODUL ABSENSI DIGITAL",
+                            text = "📖 KIOSK ABSENSI DIGITAL",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF818CF8),
@@ -234,10 +295,10 @@ fun HomeScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     Text(
-                        text = "Absensi Santri Real-Time",
+                        text = "Sistem Absensi Santri",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White,
@@ -247,7 +308,7 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Kelola kehadiran santri untuk sholat berjamaah dengan cepat dan langsung tersimpan ke server cloud.",
+                        text = "Kelola data kehadiran santri untuk sholat berjamaah secara instan dan sinkron langsung ke server cloud.",
                         fontSize = 13.sp,
                         color = Slate400,
                         textAlign = TextAlign.Center,
@@ -255,7 +316,7 @@ fun HomeScreen(
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(28.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     // STATS ROW CARD
                     Row(
@@ -271,7 +332,7 @@ fun HomeScreen(
                                 modifier = Modifier.padding(14.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text("SANTRI", fontSize = 10.sp, color = Slate400, fontWeight = FontWeight.Bold)
+                                Text("TOTAL SANTRI", fontSize = 10.sp, color = Slate400, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text("${santriList.size}", fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Black)
                             }
@@ -286,9 +347,9 @@ fun HomeScreen(
                                 modifier = Modifier.padding(14.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text("SHOLAT", fontSize = 10.sp, color = Slate400, fontWeight = FontWeight.Bold)
+                                Text("SHOLAT AKTIF", fontSize = 10.sp, color = Slate400, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(viewModel.getActiveSholat(), fontSize = 18.sp, color = Emerald400, fontWeight = FontWeight.Black)
+                                Text(activePrayer, fontSize = 18.sp, color = Emerald400, fontWeight = FontWeight.Black)
                             }
                         }
                     }
@@ -305,41 +366,73 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // PRIMARY ACTION BUTTON: BUKA ABSENSI MANUAL
-            Button(
-                onClick = onNavigateToManual,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                contentPadding = PaddingValues(),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(58.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color(0xFF6366F1),
-                                Color(0xFF4F46E5)
-                            )
-                        ),
-                        shape = RoundedCornerShape(20.dp)
-                    )
+            // BOTTOM NAVIGATION BUTTONS ROW: ABSENSI MANUAL & REKAP ABSENSI
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Button(
+                    onClick = onNavigateToManual,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    contentPadding = PaddingValues(),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF6366F1),
+                                    Color(0xFF4F46E5)
+                                )
+                            ),
+                            shape = RoundedCornerShape(20.dp)
+                        )
                 ) {
-                    Text(
-                        text = "📋  BUKA ABSENSI MANUAL",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White,
-                        letterSpacing = 0.5.sp
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "📋  BUKA ABSENSI MANUAL",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = onNavigateToRekap,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    contentPadding = PaddingValues(),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .background(
+                            Color.White.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "📊  LIHAT REKAP ABSENSI",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Emerald400,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
             }
         }
 
-        // FULL POPUP OVERLAY ON MATCH (Kept intact for biometrics background engine)
+        // FULL POPUP OVERLAY ON MATCH (Engine listener retained)
         AnimatedVisibility(
             visible = lastMatchedSantri != null,
             enter = fadeIn() + slideInVertically(initialOffsetY = { it }),

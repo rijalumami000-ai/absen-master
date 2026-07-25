@@ -21,7 +21,7 @@ export const RekapAbsensi: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number | ''>(now.getMonth() + 1);
   const [selectedYearValue, setSelectedYearValue] = useState<number | ''>(now.getFullYear()); // Numeric calendar year
   const [selectedSholat, setSelectedSholat] = useState('Subuh');
-  const [selectedStatus, setSelectedStatus] = useState('Hadir');
+  const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedRoom, setSelectedRoom] = useState('');
   const [selectedGender, setSelectedGender] = useState('Putri');
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,6 +101,21 @@ export const RekapAbsensi: React.FC = () => {
     if (years.length > 0) {
       loadData();
     }
+
+    // Real-time SSE listener for instant Rekap update on fingerprint scan or manual save
+    const eventSource = new EventSource('/api/attendance/stream');
+    eventSource.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed.event === 'scan_success' || parsed.event === 'attendance_updated') {
+          loadData();
+        }
+      } catch (e) {}
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }, [
     years,
     selectedYear,

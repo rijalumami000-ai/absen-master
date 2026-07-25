@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +45,8 @@ fun ManualAttendanceScreen(
     var genderDropdownOpen by remember { mutableStateOf(false) }
     var roomDropdownOpen by remember { mutableStateOf(false) }
     var prayerDropdownOpen by remember { mutableStateOf(false) }
+
+    val allStatuses = listOf("Hadir", "Sakit", "Izin", "Alfa", "Masbuq", "Haid", "Istihadhoh", "Tugas", "Terlambat")
 
     // Filter local list
     val filteredSantri = remember(santriList, searchQuery) {
@@ -103,7 +106,7 @@ fun ManualAttendanceScreen(
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
             ) {
-                // AUTO-SAVE NOTIFICATION TOAST BADGE (Request #5)
+                // AUTO-SAVE NOTIFICATION TOAST BADGE
                 AnimatedVisibility(
                     visible = autoSaveStatusText != null,
                     enter = fadeIn(),
@@ -185,7 +188,7 @@ fun ManualAttendanceScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // GENDER & ROOM DROPDOWNS (Request #4: Default room is first room alphabetically)
+                        // GENDER & ROOM DROPDOWNS
                         Row(modifier = Modifier.fillMaxWidth()) {
                             // GENDER FILTER
                             Column(modifier = Modifier.weight(1f)) {
@@ -359,13 +362,12 @@ fun ManualAttendanceScreen(
 
                                     Spacer(modifier = Modifier.height(12.dp))
 
-                                    // ALL ATTENDANCE STATUS PILL OPTIONS (Hadir, Sakit, Izin, Alfa)
-                                    // Request #3 & #5: Instant Auto-Sync when tapped!
-                                    Row(
+                                    // ALL ATTENDANCE STATUS PILL OPTIONS (Hadir, Sakit, Izin, Alfa, Masbuq, Haid, Istihadhoh, Tugas, Terlambat)
+                                    LazyRow(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        listOf("Hadir", "Sakit", "Izin", "Alfa").forEach { opt ->
+                                        items(allStatuses) { opt ->
                                             val isSelected = currentStatus == opt
 
                                             val bg = when {
@@ -373,7 +375,12 @@ fun ManualAttendanceScreen(
                                                 opt == "Hadir" -> Emerald500.copy(alpha = 0.25f)
                                                 opt == "Sakit" -> Color(0xFFF59E0B).copy(alpha = 0.25f)
                                                 opt == "Izin" -> Color(0xFF3B82F6).copy(alpha = 0.25f)
-                                                else -> Red500.copy(alpha = 0.25f)
+                                                opt == "Alfa" -> Red500.copy(alpha = 0.25f)
+                                                opt == "Masbuq" -> Color(0xFF8B5CF6).copy(alpha = 0.25f)
+                                                opt == "Haid" -> Color(0xFFEC4899).copy(alpha = 0.25f)
+                                                opt == "Istihadhoh" -> Color(0xFFF43F5E).copy(alpha = 0.25f)
+                                                opt == "Tugas" -> Color(0xFF14B8A6).copy(alpha = 0.25f)
+                                                else -> Color(0xFF6366F1).copy(alpha = 0.25f) // Terlambat
                                             }
 
                                             val borderCol = when {
@@ -381,7 +388,12 @@ fun ManualAttendanceScreen(
                                                 opt == "Hadir" -> Emerald400
                                                 opt == "Sakit" -> Color(0xFFFBBF24)
                                                 opt == "Izin" -> Color(0xFF60A5FA)
-                                                else -> Red500
+                                                opt == "Alfa" -> Red500
+                                                opt == "Masbuq" -> Color(0xFFA78BFA)
+                                                opt == "Haid" -> Color(0xFFF472B6)
+                                                opt == "Istihadhoh" -> Color(0xFFFB7185)
+                                                opt == "Tugas" -> Color(0xFF2DD4BF)
+                                                else -> Color(0xFF818CF8) // Terlambat
                                             }
 
                                             val textCol = when {
@@ -389,24 +401,27 @@ fun ManualAttendanceScreen(
                                                 opt == "Hadir" -> Emerald400
                                                 opt == "Sakit" -> Color(0xFFFBBF24)
                                                 opt == "Izin" -> Color(0xFF60A5FA)
-                                                else -> Red500
+                                                opt == "Alfa" -> Red500
+                                                opt == "Masbuq" -> Color(0xFFA78BFA)
+                                                opt == "Haid" -> Color(0xFFF472B6)
+                                                opt == "Istihadhoh" -> Color(0xFFFB7185)
+                                                opt == "Tugas" -> Color(0xFF2DD4BF)
+                                                else -> Color(0xFF818CF8)
                                             }
 
                                             Box(
                                                 modifier = Modifier
-                                                    .weight(1f)
                                                     .clip(RoundedCornerShape(12.dp))
                                                     .background(bg)
                                                     .border(1.dp, borderCol, RoundedCornerShape(12.dp))
                                                     .clickable {
-                                                        // Instant auto sync on status pill tap
                                                         viewModel.updateAndSaveAttendanceState(
                                                             santriId = santri.id,
                                                             status = opt,
                                                             prayerTime = activePrayerTime
                                                         )
                                                     }
-                                                    .padding(vertical = 10.dp),
+                                                    .padding(horizontal = 14.dp, vertical = 8.dp),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Text(

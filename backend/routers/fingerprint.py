@@ -171,12 +171,10 @@ async def scan_fingerprint(data: FingerprintScanRequest, db: AsyncSession = Depe
     
     status_str = "Hadir"
     if existing_att:
-        status_str = existing_att.status
-        # Update scan time if already present but not scan-authenticated
-        if existing_att.method == "Manual":
-            existing_att.method = "Fingerprint"
-            existing_att.scanned_at = datetime.utcnow() + timedelta(hours=7)
-            await db.commit()
+        existing_att.status = "Hadir"
+        existing_att.method = "Fingerprint"
+        existing_att.scanned_at = datetime.utcnow() + timedelta(hours=7)
+        await db.commit()
     else:
         # Create new attendance record
         new_att = Attendance(
