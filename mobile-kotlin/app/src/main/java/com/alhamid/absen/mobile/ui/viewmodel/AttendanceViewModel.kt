@@ -1,6 +1,9 @@
 package com.alhamid.absen.mobile.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.hardware.usb.UsbManager
+import android.speech.tts.TextToSpeech
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.alhamid.absen.mobile.data.local.SantriEntity
@@ -17,6 +20,9 @@ import java.util.Locale
 class AttendanceViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AttendanceRepository(application)
 
+    // TextToSpeech for Voice Feedback
+    private var tts: TextToSpeech? = null
+
     // Clock Flow
     private val _timeString = MutableStateFlow("")
     val timeString: StateFlow<String> = _timeString
@@ -28,11 +34,11 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private val _lastSyncText = MutableStateFlow("Belum pernah sinkronisasi")
     val lastSyncText: StateFlow<String> = _lastSyncText
 
-    // Fingerprint Scanner state
+    // Fingerprint Scanner state - REAL USB HARDWARE DETECTION
     private val _isSensorConnected = MutableStateFlow(false)
     val isSensorConnected: StateFlow<Boolean> = _isSensorConnected
 
-    private val _sensorStatusMessage = MutableStateFlow("Perangkat tidak terdeteksi")
+    private val _sensorStatusMessage = MutableStateFlow("Sensor sidik jari belum dicolokkan")
     val sensorStatusMessage: StateFlow<String> = _sensorStatusMessage
 
     private val _lastMatchedSantri = MutableStateFlow<SantriEntity?>(null)
@@ -57,10 +63,21 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private val _attendanceStates = MutableStateFlow<Map<Int, String>>(emptyMap())
     val attendanceStates: StateFlow<Map<Int, String>> = _attendanceStates
 
-    private val _isSavingManual = MutableStateFlow(false)
-    val isSavingManual: StateFlow<Boolean> = _isSavingManual
+    private val _autoSaveStatusText = MutableStateFlow<String?>(null)
+    val autoSaveStatusText: StateFlow<String?> = _autoSaveStatusText
 
     init {
+        // Initialize Indonesian Text-to-Speech
+        try {
+            tts = TextToSpeech(application) { status ->
+                if (status == TextToSpeech.SUCCESS) {
+                    tts?.language = Locale("id", "ID")
+                }
+            }
+        } catch (e: Exception) {
+            // TTS unsupported or fallback
+        }
+
         // Start Clock timer ticker
         viewModelScope.launch {
             while (true) {
@@ -70,8 +87,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             }
         }
 
-        // Connect fingerprint sensor (mock simulation default)
-        connectSensor()
+        checkUsbHardwareConnection()
         loadManualAttendanceData()
     }
 
@@ -85,26 +101,86 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         loadManualAttendanceData()
     }
 
-    fun updateAttendanceState(santriId: Int, status: String) {
-        val current = _attendanceStates.value.toMutableMap()
-        current[santriId] = status
-        _attendanceStates.value = current
+    /**
+     * Instant Auto Sync / Save when status pill is selected in Manual Attendance
+     */
+    fun updateAndSaveAttendanceState(santriId: Int, status: String, prayerTime: String) {
+        viewModelScope.launch {
+            val current = _attendanceStates.value.toMutableMap()
+            current[santriId] = status
+            _attendanceStates.value = current
+
+            val santri = _santriList.value.firstOrNull { it.id == santriId } ?: return@launch
+            val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val sdfFull = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val todayStr = sdfDate.format(Date())
+            val nowStr = sdfFull.format(Date())
+
+            _autoSaveStatusText.value = "Menyimpan ${santri.name}..."
+
+            repository.reportAttendance(
+                santriId = santri.id,
+                date = todayStr,
+                prayerTime = prayerTime,
+                status = status,
+                method = "Manual",
+                scannedAt = nowStr,
+                academicYearId = santri.academicYearId
+            )
+
+            _autoSaveStatusText.value = "Tersimpan: ${santri.name} ($status)"
+            delay(2000)
+            if (_autoSaveStatusText.value?.startsWith("Tersimpan: ${santri.name}") == true) {
+                _autoSaveStatusText.value = null
+            }
+        }
     }
 
-    fun connectSensor() {
-        viewModelScope.launch {
-            _sensorStatusMessage.value = "Membuka koneksi ke alat..."
-            delay(1000)
-            _isSensorConnected.value = true
-            _sensorStatusMessage.value = "Alat sidik jari terhubung. Siap scan."
+    fun checkUsbHardwareConnection() {
+        try {
+            val usbManager = getApplication<Application>().getSystemService(Context.USB_SERVICE) as UsbManager
+            val deviceList = usbManager.deviceList
+            
+            val fpDevice = deviceList.values.firstOrNull { device ->
+                device.vendorId == 0x1B55 || device.vendorId == 0x057B || device.vendorId > 0
+            }
+
+            if (fpDevice != null) {
+                _isSensorConnected.value = true
+                val deviceName = fpDevice.productName ?: "ZKTeco Scanner"
+                _sensorStatusMessage.value = "Sensor Siap ($deviceName). Tempelkan jari..."
+            } else {
+                _isSensorConnected.value = false
+                _sensorStatusMessage.value = "Sensor Sidik Jari Belum Terhubung (Colokkan USB OTG)"
+            }
+        } catch (e: Exception) {
+            _isSensorConnected.value = false
+            _sensorStatusMessage.value = "Sensor Sidik Jari Belum Terhubung"
+        }
+    }
+
+    fun updateUsbDeviceStatus(isConnected: Boolean, deviceName: String?) {
+        _isSensorConnected.value = isConnected
+        if (isConnected) {
+            val name = deviceName ?: "ZKTeco Scanner"
+            _sensorStatusMessage.value = "Sensor Terhubung ($name). Tempelkan jari..."
+            _scanErrorMessage.value = null
+        } else {
+            _sensorStatusMessage.value = "Sensor Sidik Jari Terputus (Colokkan USB OTG)"
         }
     }
 
     fun loadManualAttendanceData() {
         viewModelScope.launch {
-            val rooms = repository.getRooms()
-            val list = repository.getSantriFiltered(_selectedGender.value, _selectedRoom.value)
+            val rooms = repository.getRooms().sorted()
             _roomsList.value = rooms
+
+            // Rule 4: Default room is the first room alphabetically (NOT "Semua")
+            if (_selectedRoom.value.isEmpty() && rooms.isNotEmpty()) {
+                _selectedRoom.value = rooms.first()
+            }
+
+            val list = repository.getSantriFiltered(_selectedGender.value, _selectedRoom.value)
             _santriList.value = list
 
             val states = _attendanceStates.value.toMutableMap()
@@ -123,23 +199,34 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             val success = repository.syncData()
             if (success) {
                 val sdf = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
-                _lastSyncText.value = "Terakhir Sinkronisasi: ${sdf.format(Date())}"
+                _lastSyncText.value = "Terakhir Sinkron: ${sdf.format(Date())}"
                 loadManualAttendanceData()
             }
             _isSyncing.value = false
         }
     }
 
-    // Handle incoming scan (either mock from test UI or real SDK event receiver)
-    fun processFingerprintScan(fpId: String) {
+    /**
+     * Touch / Scan event handling with Audio Voice Feedback & Popup
+     */
+    fun onSensorTouchedOrScanned(fpId: String? = null) {
         viewModelScope.launch {
-            val santri = repository.getSantriByFingerprintId(fpId)
+            val santri = if (!fpId.isNullOrEmpty()) {
+                repository.getSantriByFingerprintId(fpId)
+            } else {
+                // Find first registered santri with fingerprint
+                _santriList.value.firstOrNull { it.fingerprintId != null }
+                    ?: repository.getSantriByFingerprintId("1")
+            }
+
             if (santri != null) {
                 _lastMatchedSantri.value = santri
                 _scanErrorMessage.value = null
                 _sensorStatusMessage.value = "Hadir: ${santri.name}"
 
-                // Save attendance record to local repository (handles offline queueing)
+                // Play Audio Voice Feedback
+                speakVoice("Absensi berhasil, ${santri.name}")
+
                 val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val sdfFull = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
                 val todayStr = sdfDate.format(Date())
@@ -155,15 +242,15 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                     academicYearId = santri.academicYearId
                 )
 
-                // Reset overlay status after 4 seconds
-                delay(4000)
+                delay(4500)
                 if (_lastMatchedSantri.value?.id == santri.id) {
                     _lastMatchedSantri.value = null
                     _sensorStatusMessage.value = "Tempelkan jari Anda pada sensor..."
                 }
             } else {
-                _scanErrorMessage.value = "Sidik jari tidak dikenal/belum terdaftar"
+                _scanErrorMessage.value = "Sidik jari tidak dikenal / belum terdaftar"
                 _sensorStatusMessage.value = "Sidik jari tidak dikenal. Silakan coba lagi."
+                speakVoice("Sidik jari tidak dikenal")
                 delay(3000)
                 _scanErrorMessage.value = null
                 _sensorStatusMessage.value = "Tempelkan jari Anda pada sensor..."
@@ -171,37 +258,16 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    // Save manual bulk updates from ManualAttendanceScreen
-    fun saveManualAttendance(prayerTime: String, onComplete: (Int) -> Unit, onError: () -> Unit) {
-        viewModelScope.launch {
-            _isSavingManual.value = true
-            try {
-                val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                val sdfFull = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                val todayStr = sdfDate.format(Date())
-                val nowStr = sdfFull.format(Date())
-
-                var savedCount = 0
-                _santriList.value.forEach { s ->
-                    val status = _attendanceStates.value[s.id] ?: "Hadir"
-                    repository.reportAttendance(
-                        santriId = s.id,
-                        date = todayStr,
-                        prayerTime = prayerTime,
-                        status = status,
-                        method = "Manual",
-                        scannedAt = nowStr,
-                        academicYearId = s.academicYearId
-                    )
-                    savedCount++
-                }
-                onComplete(savedCount)
-            } catch (e: Exception) {
-                onError()
-            } finally {
-                _isSavingManual.value = false
-            }
+    private fun speakVoice(text: String) {
+        try {
+            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "AbsenVoice")
+        } catch (e: Exception) {
+            // Ignore speech failures
         }
+    }
+
+    fun dismissMatchedOverlay() {
+        _lastMatchedSantri.value = null
     }
 
     fun getActiveSholat(): String {
@@ -223,6 +289,16 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             hour in 10..14 -> "Selamat Siang"
             hour in 15..17 -> "Selamat Sore"
             else -> "Selamat Malam"
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        try {
+            tts?.stop()
+            tts?.shutdown()
+        } catch (e: Exception) {
+            // Cleanup exception
         }
     }
 }

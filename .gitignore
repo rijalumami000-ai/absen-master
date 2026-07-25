@@ -43,3 +43,10 @@ Thumbs.db
 /ZKFinger/
 *.log
 /scratch/
+
+# Kotlin Mobile app ignores
+/mobile-kotlin/.gradle/
+/mobile-kotlin/app/build/
+/mobile-kotlin/.idea/
+/mobile-kotlin/local.properties
+

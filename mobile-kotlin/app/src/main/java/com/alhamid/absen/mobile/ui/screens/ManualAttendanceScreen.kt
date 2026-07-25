@@ -1,21 +1,26 @@
 package com.alhamid.absen.mobile.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.alhamid.absen.mobile.data.local.SantriEntity
 import com.alhamid.absen.mobile.ui.theme.*
 import com.alhamid.absen.mobile.ui.viewmodel.AttendanceViewModel
 
@@ -30,14 +35,10 @@ fun ManualAttendanceScreen(
     val roomsList by viewModel.roomsList.collectAsState()
     val santriList by viewModel.santriList.collectAsState()
     val attendanceStates by viewModel.attendanceStates.collectAsState()
-    val isSavingManual by viewModel.isSavingManual.collectAsState()
+    val autoSaveStatusText by viewModel.autoSaveStatusText.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var activePrayerTime by remember { mutableStateOf(viewModel.getActiveSholat()) }
-
-    var showSuccessDialog by remember { mutableStateOf(false) }
-    var successCount by remember { mutableStateOf(0) }
-    var showErrorDialog by remember { mutableStateOf(false) }
 
     // Dropdown open states
     var genderDropdownOpen by remember { mutableStateOf(false) }
@@ -55,340 +56,374 @@ fun ManualAttendanceScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Absensi Manual", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Text("←", fontSize = 24.sp)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF090D16),
+                        Color(0xFF0F172A),
+                        Color(0xFF1E293B)
+                    )
+                )
             )
-        },
-        bottomBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(16.dp)
-            ) {
-                Button(
-                    onClick = {
-                        viewModel.saveManualAttendance(
-                            prayerTime = activePrayerTime,
-                            onComplete = { count ->
-                                successCount = count
-                                showSuccessDialog = true
-                            },
-                            onError = {
-                                showErrorDialog = true
-                            }
-                        )
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = "Absensi Manual Santri",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 17.sp
+                            )
+                            Text(
+                                text = "Pilih status di bawah untuk simpan otomatis",
+                                fontSize = 11.sp,
+                                color = Emerald400
+                            )
+                        }
                     },
-                    enabled = !isSavingManual && filteredSantri.isNotEmpty(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Indigo500),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                ) {
-                    if (isSavingManual) {
-                        CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
-                    } else {
-                        Text("Simpan Absensi", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    }
-                }
-            }
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Slate50)
-                .padding(paddingValues)
-        ) {
-            // FILTER BAR
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(16.dp)
-            ) {
-                // Active Prayer selector
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Waktu Sholat:", fontWeight = FontWeight.SemiBold, color = Slate500, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Box(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "$activePrayerTime ▼",
-                            fontWeight = FontWeight.Bold,
-                            color = Indigo500,
-                            modifier = Modifier
-                                .clickable { prayerDropdownOpen = true }
-                                .padding(8.dp)
-                        )
-                        DropdownMenu(
-                            expanded = prayerDropdownOpen,
-                            onDismissRequest = { prayerDropdownOpen = false }
-                        ) {
-                            listOf("Subuh", "Dzuhur", "Ashar", "Maghrib", "Isya").forEach { sholat ->
-                                DropdownMenuItem(
-                                    text = { Text(sholat) },
-                                    onClick = {
-                                        activePrayerTime = sholat
-                                        prayerDropdownOpen = false
-                                    }
-                                )
-                            }
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Text("←", fontSize = 24.sp, color = Color.White)
                         }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Divider(color = Slate50)
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Gender & Room selectors row
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Gender Filter
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Gender", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Slate500)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Slate50)
-                                .clickable { genderDropdownOpen = true }
-                                .padding(horizontal = 12.dp, vertical = 12.dp)
-                        ) {
-                            Text(text = "$selectedGender ▼", fontSize = 14.sp)
-                            DropdownMenu(
-                                expanded = genderDropdownOpen,
-                                onDismissRequest = { genderDropdownOpen = false }
-                            ) {
-                                listOf("Putra", "Putri").forEach { g ->
-                                    DropdownMenuItem(
-                                        text = { Text(g) },
-                                        onClick = {
-                                            viewModel.setGender(g)
-                                            genderDropdownOpen = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    // Room Filter
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Kamar", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Slate500)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Slate50)
-                                .clickable { roomDropdownOpen = true }
-                                .padding(horizontal = 12.dp, vertical = 12.dp)
-                        ) {
-                            Text(text = "${if (selectedRoom.isEmpty()) "Semua" else selectedRoom} ▼", fontSize = 14.sp)
-                            DropdownMenu(
-                                expanded = roomDropdownOpen,
-                                onDismissRequest = { roomDropdownOpen = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Semua") },
-                                    onClick = {
-                                        viewModel.setRoom("")
-                                        roomDropdownOpen = false
-                                    }
-                                )
-                                roomsList.forEach { r ->
-                                    DropdownMenuItem(
-                                        text = { Text(r) },
-                                        onClick = {
-                                            viewModel.setRoom(r)
-                                            roomDropdownOpen = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Search Box
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Cari nama santri...") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp)),
-                    singleLine = true
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // LIST OF SANTRI
-            if (filteredSantri.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp)
+            ) {
+                // AUTO-SAVE NOTIFICATION TOAST BADGE (Request #5)
+                AnimatedVisibility(
+                    visible = autoSaveStatusText != null,
+                    enter = fadeIn(),
+                    exit = fadeOut()
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("ℹ️", fontSize = 36.sp)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text("Tidak ada santri yang cocok.", color = Slate500)
+                    autoSaveStatusText?.let { text ->
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = Emerald500.copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("⚡", fontSize = 14.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = text,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Emerald400
+                                )
+                            }
+                        }
                     }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+
+                // FILTER HEADER GLASS CARD
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.White.copy(alpha = 0.05f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(filteredSantri) { santri ->
-                        val currentStatus = attendanceStates[santri.id] ?: "Hadir"
-
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                            modifier = Modifier.fillMaxWidth()
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        // PRAYER SELECTOR ROW
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                            Text("WAKTU SHOLAT", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Emerald400, letterSpacing = 1.sp)
+                            
+                            Box {
+                                Surface(
+                                    onClick = { prayerDropdownOpen = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color.White.copy(alpha = 0.08f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
                                 ) {
-                                    Column {
-                                        Text(
-                                            text = santri.name,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Slate900
+                                    Text(
+                                        text = "🕌 Sholat $activePrayerTime ▼",
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = prayerDropdownOpen,
+                                    onDismissRequest = { prayerDropdownOpen = false }
+                                ) {
+                                    listOf("Subuh", "Dzuhur", "Ashar", "Maghrib", "Isya").forEach { sholat ->
+                                        DropdownMenuItem(
+                                            text = { Text(sholat, fontWeight = FontWeight.SemiBold) },
+                                            onClick = {
+                                                activePrayerTime = sholat
+                                                prayerDropdownOpen = false
+                                            }
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = "Kamar ${santri.room} • ${santri.gender}",
-                                            fontSize = 12.sp,
-                                            color = Slate500
-                                        )
-                                    }
-
-                                    if (santri.fingerprintId != null) {
-                                        Text("☝️", fontSize = 16.sp)
                                     }
                                 }
+                            }
+                        }
 
-                                Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                                // Status options segmented buttons
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    listOf("Hadir", "Sakit", "Izin", "Alfa").forEach { opt ->
-                                        val isSelected = currentStatus == opt
-
-                                        val bg = when {
-                                            !isSelected -> Slate50
-                                            opt == "Hadir" -> Emerald50
-                                            opt == "Sakit" -> Color(0xFFFEF3C7)
-                                            opt == "Izin" -> Color(0xFFDBEAFE)
-                                            else -> Color(0xFFFEE2E2)
-                                        }
-
-                                        val textCol = when {
-                                            !isSelected -> Slate500
-                                            opt == "Hadir" -> Emerald600
-                                            opt == "Sakit" -> Color(0xFF92400E)
-                                            opt == "Izin" -> Color(0xFF1E40AF)
-                                            else -> Color(0xFF991B1B)
-                                        }
-
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(CircleShape)
-                                                .background(bg)
-                                                .clickable {
-                                                    viewModel.updateAttendanceState(santri.id, opt)
+                        // GENDER & ROOM DROPDOWNS (Request #4: Default room is first room alphabetically)
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            // GENDER FILTER
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("GENDER", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Slate400, letterSpacing = 0.5.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Box {
+                                    Surface(
+                                        onClick = { genderDropdownOpen = true },
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = Color.White.copy(alpha = 0.08f),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = "$selectedGender ▼",
+                                            fontSize = 13.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.padding(10.dp)
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = genderDropdownOpen,
+                                        onDismissRequest = { genderDropdownOpen = false }
+                                    ) {
+                                        listOf("Putra", "Putri").forEach { g ->
+                                            DropdownMenuItem(
+                                                text = { Text(g) },
+                                                onClick = {
+                                                    viewModel.setGender(g)
+                                                    genderDropdownOpen = false
                                                 }
-                                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = opt,
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = textCol
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // ROOM FILTER
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("KAMAR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Slate400, letterSpacing = 0.5.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Box {
+                                    Surface(
+                                        onClick = { roomDropdownOpen = true },
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = Color.White.copy(alpha = 0.08f),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = "${if (selectedRoom.isEmpty()) "Pilih Kamar" else selectedRoom} ▼",
+                                            fontSize = 13.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.padding(10.dp)
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = roomDropdownOpen,
+                                        onDismissRequest = { roomDropdownOpen = false }
+                                    ) {
+                                        roomsList.forEach { r ->
+                                            DropdownMenuItem(
+                                                text = { Text("Kamar $r") },
+                                                onClick = {
+                                                    viewModel.setRoom(r)
+                                                    roomDropdownOpen = false
+                                                }
                                             )
                                         }
                                     }
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // SEARCH FIELD
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Cari nama santri...", color = Slate400, fontSize = 13.sp) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White.copy(alpha = 0.08f),
+                                unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                focusedBorderColor = Emerald400,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // SANTRI LIST
+                if (filteredSantri.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("🔍", fontSize = 36.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Tidak ada santri yang cocok", color = Slate400, fontSize = 14.sp)
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        items(filteredSantri) { santri ->
+                            val currentStatus = attendanceStates[santri.id] ?: "Hadir"
+
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = Color.White.copy(alpha = 0.06f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = santri.name,
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = "Kamar ${santri.room} • ${santri.gender}",
+                                                fontSize = 12.sp,
+                                                color = Slate400
+                                            )
+                                        }
+
+                                        if (santri.fingerprintId != null) {
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = Emerald500.copy(alpha = 0.15f),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f))
+                                            ) {
+                                                Text(
+                                                    text = "☝️ FP",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Emerald400,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    // ALL ATTENDANCE STATUS PILL OPTIONS (Hadir, Sakit, Izin, Alfa)
+                                    // Request #3 & #5: Instant Auto-Sync when tapped!
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        listOf("Hadir", "Sakit", "Izin", "Alfa").forEach { opt ->
+                                            val isSelected = currentStatus == opt
+
+                                            val bg = when {
+                                                !isSelected -> Color.White.copy(alpha = 0.04f)
+                                                opt == "Hadir" -> Emerald500.copy(alpha = 0.25f)
+                                                opt == "Sakit" -> Color(0xFFF59E0B).copy(alpha = 0.25f)
+                                                opt == "Izin" -> Color(0xFF3B82F6).copy(alpha = 0.25f)
+                                                else -> Red500.copy(alpha = 0.25f)
+                                            }
+
+                                            val borderCol = when {
+                                                !isSelected -> Color.White.copy(alpha = 0.08f)
+                                                opt == "Hadir" -> Emerald400
+                                                opt == "Sakit" -> Color(0xFFFBBF24)
+                                                opt == "Izin" -> Color(0xFF60A5FA)
+                                                else -> Red500
+                                            }
+
+                                            val textCol = when {
+                                                !isSelected -> Slate400
+                                                opt == "Hadir" -> Emerald400
+                                                opt == "Sakit" -> Color(0xFFFBBF24)
+                                                opt == "Izin" -> Color(0xFF60A5FA)
+                                                else -> Red500
+                                            }
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .background(bg)
+                                                    .border(1.dp, borderCol, RoundedCornerShape(12.dp))
+                                                    .clickable {
+                                                        // Instant auto sync on status pill tap
+                                                        viewModel.updateAndSaveAttendanceState(
+                                                            santriId = santri.id,
+                                                            status = opt,
+                                                            prayerTime = activePrayerTime
+                                                        )
+                                                    }
+                                                    .padding(vertical = 10.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = opt,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                    color = textCol
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
-    }
-
-    // Success dialog modal popup
-    if (showSuccessDialog) {
-        AlertDialog(
-            onDismissRequest = { showSuccessDialog = false },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showSuccessDialog = false
-                        onBack()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Indigo500)
-                ) {
-                    Text("Selesai")
-                }
-            },
-            title = { Text("Berhasil Disimpan", fontWeight = FontWeight.Bold) },
-            text = { Text("Data absensi $successCount santri sholat $activePrayerTime berhasil dicatat.") }
-        )
-    }
-
-    // Error dialog modal popup
-    if (showErrorDialog) {
-        AlertDialog(
-            onDismissRequest = { showErrorDialog = false },
-            confirmButton = {
-                Button(
-                    onClick = { showErrorDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = Red500)
-                ) {
-                    Text("Tutup")
-                }
-            },
-            title = { Text("Gagal Menyimpan", fontWeight = FontWeight.Bold) },
-            text = { Text("Terjadi kesalahan saat memproses penyimpanan data absensi.") }
-        )
     }
 }
