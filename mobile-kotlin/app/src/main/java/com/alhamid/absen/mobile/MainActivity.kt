@@ -10,6 +10,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: AttendanceViewModel by viewModels()
     private val ACTION_USB_PERMISSION = "com.alhamid.absen.mobile.USB_PERMISSION"
+    private val scannedBuffer = StringBuilder()
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -70,7 +72,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Safe register USB receiver using ContextCompat to prevent Android 14 API 34 SecurityException crash
+        // Safe register USB receiver using ContextCompat
         try {
             val filter = IntentFilter().apply {
                 addAction(ACTION_USB_PERMISSION)
@@ -87,10 +89,8 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "Error registering receiver", e)
         }
 
-        // Request USB permission safely if device is attached on startup
         checkAndRequestUsbDevice()
 
-        // Set UI content safely
         setContent {
             AbsensiTheme {
                 var currentScreen by remember { mutableStateOf("home") }
@@ -108,6 +108,26 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Listens to USB OTG Scanner Key Events (ZKTeco / Biometric OTG Key Input)
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            val char = event.unicodeChar.toChar()
+            if (event.keyCode == KeyEvent.KEYCODE_ENTER) {
+                val scannedId = scannedBuffer.toString().trim()
+                scannedBuffer.clear()
+                if (scannedId.isNotEmpty()) {
+                    viewModel.onSensorTouchedOrScanned(scannedId)
+                    return true
+                }
+            } else if (char.isLetterOrDigit() || char == '-' || char == '_') {
+                scannedBuffer.append(char)
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     private fun checkAndRequestUsbDevice() {

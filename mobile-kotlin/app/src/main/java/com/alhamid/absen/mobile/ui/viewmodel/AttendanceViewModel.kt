@@ -2,18 +2,24 @@ package com.alhamid.absen.mobile.ui.viewmodel
 
 import android.app.Application
 import android.content.Context
+import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbDeviceConnection
+import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.speech.tts.TextToSpeech
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.alhamid.absen.mobile.data.local.SantriEntity
 import com.alhamid.absen.mobile.data.repository.AttendanceRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -68,7 +74,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private val _autoSaveStatusText = MutableStateFlow<String?>(null)
     val autoSaveStatusText: StateFlow<String?> = _autoSaveStatusText
 
-    private var sensorAutoCaptureJob: Job? = null
+    private var usbReaderJob: Job? = null
 
     init {
         // Initialize Indonesian Text-to-Speech Engine
@@ -79,7 +85,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 }
             }
         } catch (e: Exception) {
-            // Fallback if TTS not supported
+            Log.e("AttendanceViewModel", "TTS Init error", e)
         }
 
         // Start Clock timer ticker
@@ -92,8 +98,6 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         }
 
         checkUsbHardwareConnection()
-        
-        // Auto-sync database from server on launch so SQLite Room contains registered santri & templates
         syncDatabase()
     }
 
@@ -157,17 +161,17 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             if (fpDevice != null) {
                 _isSensorConnected.value = true
                 val deviceName = fpDevice.productName ?: "ZKTeco Scanner"
-                _sensorStatusMessage.value = "Sensor OTG Terhubung ($deviceName). Tempelkan jari..."
-                startSensorAutoListenLoop()
+                _sensorStatusMessage.value = "Sensor Terhubung ($deviceName). Tempelkan jari..."
+                startUsbBulkReader(usbManager, fpDevice)
             } else {
                 _isSensorConnected.value = false
                 _sensorStatusMessage.value = "Sensor Sidik Jari Belum Terhubung (Colokkan USB OTG)"
-                sensorAutoCaptureJob?.cancel()
+                usbReaderJob?.cancel()
             }
         } catch (e: Exception) {
             _isSensorConnected.value = false
             _sensorStatusMessage.value = "Sensor Sidik Jari Belum Terhubung"
-            sensorAutoCaptureJob?.cancel()
+            usbReaderJob?.cancel()
         }
     }
 
@@ -177,21 +181,57 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             val name = deviceName ?: "ZKTeco Scanner"
             _sensorStatusMessage.value = "Sensor Terhubung ($name). Siap Scan Jari..."
             _scanErrorMessage.value = null
-            startSensorAutoListenLoop()
+            checkUsbHardwareConnection()
         } else {
             _sensorStatusMessage.value = "Sensor Sidik Jari Terputus (Colokkan USB OTG)"
-            sensorAutoCaptureJob?.cancel()
+            usbReaderJob?.cancel()
         }
     }
 
     /**
-     * Background Listener for Hardware Touch Capture
+     * Real ZKTeco USB Bulk Endpoint Data Poller
      */
-    private fun startSensorAutoListenLoop() {
-        sensorAutoCaptureJob?.cancel()
-        sensorAutoCaptureJob = viewModelScope.launch {
-            while (_isSensorConnected.value) {
-                delay(2000)
+    private fun startUsbBulkReader(usbManager: UsbManager, device: UsbDevice) {
+        usbReaderJob?.cancel()
+        usbReaderJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!usbManager.hasPermission(device)) return@launch
+
+                val connection: UsbDeviceConnection = usbManager.openDevice(device) ?: return@launch
+                if (device.interfaceCount == 0) {
+                    connection.close()
+                    return@launch
+                }
+
+                val usbInterface: UsbInterface = device.getInterface(0)
+                connection.claimInterface(usbInterface, true)
+
+                // Find Bulk Input Endpoint
+                var inEndpoint = (0 until usbInterface.endpointCount)
+                    .map { usbInterface.getEndpoint(it) }
+                    .firstOrNull { it.type == UsbConstants.USB_ENDPOINT_XFER_BULK && it.direction == UsbConstants.USB_DIR_IN }
+
+                val buffer = ByteArray(64)
+                while (_isSensorConnected.value) {
+                    if (inEndpoint != null) {
+                        val len = connection.bulkTransfer(inEndpoint, buffer, buffer.size, 1000)
+                        if (len > 0) {
+                            // Extract fingerprint ID bytes
+                            val rawData = String(buffer, 0, len).trim()
+                            if (rawData.isNotEmpty()) {
+                                withContext(Dispatchers.Main) {
+                                    onSensorTouchedOrScanned(rawData)
+                                }
+                            }
+                        }
+                    }
+                    delay(500)
+                }
+
+                connection.releaseInterface(usbInterface)
+                connection.close()
+            } catch (e: Exception) {
+                Log.e("AttendanceViewModel", "USB Bulk reader error", e)
             }
         }
     }
@@ -233,23 +273,31 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /**
-     * Touch / Fingerprint scan event handler with High Sensitivity Matching & Voice Feedback
+     * Biometric Scan Matcher strictly based on Fingerprint ID (NO RANDOM FALLBACK!)
      */
     fun onSensorTouchedOrScanned(fpId: String? = null) {
         viewModelScope.launch {
-            // Ensure local DB has santri profiles
+            // Ensure local DB has data
             if (_santriList.value.isEmpty()) {
                 repository.syncData()
                 loadManualAttendanceData()
             }
 
-            val santri = if (!fpId.isNullOrEmpty()) {
-                repository.getSantriByFingerprintId(fpId)
-            } else {
-                // Find registered santri with fingerprint or first available santri
-                _santriList.value.firstOrNull { it.fingerprintId != null }
-                    ?: _santriList.value.firstOrNull()
+            val cleanFpId = fpId?.trim()
+
+            if (cleanFpId.isNullOrEmpty()) {
+                // If circle on screen is tapped without a scanned fingerprint ID from hardware
+                _sensorStatusMessage.value = "Tempelkan jari Anda pada sensor USB OTG"
+                _scanErrorMessage.value = "Silakan tempelkan jari pada sensor fisik"
+                delay(2500)
+                _scanErrorMessage.value = null
+                _sensorStatusMessage.value = "Sensor Siap. Tempelkan jari..."
+                return@launch
             }
+
+            // Query database by scanned Fingerprint ID
+            val santri = repository.getSantriByFingerprintId(cleanFpId)
+                ?: _santriList.value.firstOrNull { it.fingerprintId == cleanFpId }
 
             if (santri != null) {
                 _lastMatchedSantri.value = santri
@@ -280,7 +328,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                     _sensorStatusMessage.value = "Sensor Siap. Tempelkan jari..."
                 }
             } else {
-                _scanErrorMessage.value = "Sidik jari tidak dikenal / belum terdaftar"
+                _scanErrorMessage.value = "Sidik jari ID ($cleanFpId) tidak terdaftar"
                 _sensorStatusMessage.value = "Sidik jari tidak dikenal. Silakan coba lagi."
                 speakVoice("Sidik jari tidak dikenal")
                 delay(3000)
@@ -329,7 +377,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         try {
             tts?.stop()
             tts?.shutdown()
-            sensorAutoCaptureJob?.cancel()
+            usbReaderJob?.cancel()
         } catch (e: Exception) {
             // Cleanup exception
         }
