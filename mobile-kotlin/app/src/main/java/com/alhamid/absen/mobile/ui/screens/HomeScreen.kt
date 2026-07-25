@@ -335,6 +335,16 @@ fun HomeScreen(
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
 
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = if (isSensorConnected) "Tempelkan jari ke sensor USB OTG / Sentuh ikon" else "Colokkan kabel OTG sensor sidik jari ke HP",
+                        fontSize = 11.sp,
+                        color = Emerald400,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
