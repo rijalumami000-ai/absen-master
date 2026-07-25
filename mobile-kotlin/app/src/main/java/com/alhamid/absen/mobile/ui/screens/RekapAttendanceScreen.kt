@@ -37,7 +37,7 @@ fun RekapAttendanceScreen(
     var prayerDropdownOpen by remember { mutableStateOf(false) }
     var statusDropdownOpen by remember { mutableStateOf(false) }
 
-    val statusOptions = listOf("Semua", "Hadir", "Sakit", "Izin", "Alfa", "Masbuq", "Haid", "Istihadhoh", "Tugas", "Terlambat")
+    val statusOptions = listOf("Semua", "Hadir", "Sakit", "Izin", "Alfa", "Masbuq", "Haid", "Istihadhoh")
 
     // Stats calculations
     val totalHadir = remember(attendanceStates) { attendanceStates.values.count { it == "Hadir" } }

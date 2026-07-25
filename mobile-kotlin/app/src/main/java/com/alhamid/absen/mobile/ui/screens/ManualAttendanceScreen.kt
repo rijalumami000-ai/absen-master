@@ -46,7 +46,7 @@ fun ManualAttendanceScreen(
     var roomDropdownOpen by remember { mutableStateOf(false) }
     var prayerDropdownOpen by remember { mutableStateOf(false) }
 
-    val allStatuses = listOf("Hadir", "Sakit", "Izin", "Alfa", "Masbuq", "Haid", "Istihadhoh", "Tugas", "Terlambat")
+    val allStatuses = listOf("Hadir", "Sakit", "Izin", "Alfa", "Masbuq", "Haid", "Istihadhoh")
 
     // Filter local list
     val filteredSantri = remember(santriList, searchQuery) {
