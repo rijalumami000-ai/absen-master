@@ -57,10 +57,21 @@ async def init_db():
         await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS mother_name VARCHAR(150)"))
         await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500)"))
         await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS has_face_registered BOOLEAN DEFAULT FALSE"))
-        await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS face_embedding BYTEA"))
-        await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS face_registered_at TIMESTAMP WITH TIME ZONE"))
+        await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS face_embedding TEXT"))
+        await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS face_registered_at TIMESTAMP"))
         await conn.execute(text("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS face_confidence DOUBLE PRECISION"))
         await conn.execute(text("ALTER TABLE academic_years ADD COLUMN IF NOT EXISTS sekolah_info_year_id INTEGER"))
+        
+        # Alter existing columns if they were created with conflicting types (e.g. BYTEA or TIMESTAMPTZ)
+        try:
+            await conn.execute(text("ALTER TABLE santri ALTER COLUMN face_embedding TYPE TEXT USING face_embedding::text"))
+        except Exception:
+            pass
+            
+        try:
+            await conn.execute(text("ALTER TABLE santri ALTER COLUMN face_registered_at TYPE TIMESTAMP WITHOUT TIME ZONE USING face_registered_at::timestamp without time zone"))
+        except Exception:
+            pass
         
         # Add unique constraints separately
         try:
