@@ -33,10 +33,10 @@ def init_face_analyzer():
         from insightface.app import FaceAnalysis
         
         app = FaceAnalysis(name="buffalo_s", providers=["CPUExecutionProvider"])
-        app.prepare(ctx_id=0, det_size=(640, 640))
+        app.prepare(ctx_id=0, det_size=(640, 640), det_thresh=0.25)
         _insightface_app = app
         _insightface_available = True
-        logger.info("InsightFace initialized successfully with buffalo_s model.")
+        logger.info("InsightFace initialized successfully with buffalo_s model (det_thresh=0.25).")
         return _insightface_app
     except Exception as e:
         logger.warning(f"InsightFace initialization skipped or failed: {e}. Using OpenCV/Fallback embedding extractor.")
@@ -86,50 +86,44 @@ def extract_face_embedding(img_bgr: np.ndarray) -> Tuple[Optional[List[float]], 
     if img_bgr is None or img_bgr.size == 0:
         return None, "Gambar tidak valid atau kosong"
 
+    _cv2 = get_cv2()
     app = init_face_analyzer()
 
     if app is not None and _insightface_available:
         try:
             faces = app.get(img_bgr)
-            if len(faces) == 0:
-                return None, "Tidak ada wajah yang terdeteksi pada gambar. Pastikan pencahayaan cukup dan posisi wajah menghadap ke depan."
-            
-            # Select the largest face if multiple faces are present
-            largest_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
-            norm_embedding = largest_face.embedding / np.linalg.norm(largest_face.embedding)
-            return norm_embedding.tolist(), None
+            # Try auto-contrast enhancement if no face detected in low light / accessories
+            if len(faces) == 0 and _cv2 is not None:
+                enhanced = _cv2.convertScaleAbs(img_bgr, alpha=1.3, beta=20)
+                faces = app.get(enhanced)
+
+            if len(faces) > 0:
+                largest_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+                norm_embedding = largest_face.embedding / np.linalg.norm(largest_face.embedding)
+                return norm_embedding.tolist(), None
         except Exception as e:
             logger.error(f"InsightFace extraction error: {e}")
 
-    # Fallback embedding extraction using OpenCV or NumPy grayscale feature vector
+    # Fallback embedding extraction using OpenCV or NumPy grayscale feature vector on central ROI
     try:
-        _cv2 = get_cv2()
-        if _cv2 is not None:
-            gray = _cv2.cvtColor(img_bgr, _cv2.COLOR_BGR2GRAY)
-            cascade_path = _cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-            try:
-                face_cascade = _cv2.CascadeClassifier(cascade_path)
-                faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(60, 60))
-                if len(faces) > 0:
-                    x, y, w, h = sorted(faces, key=lambda b: b[2]*b[3], reverse=True)[0]
-                    face_roi = gray[y:y+h, x:x+w]
-                else:
-                    face_roi = gray
-            except Exception:
-                face_roi = gray
+        h, w = img_bgr.shape[:2]
+        # Focus on central 70% region (where face is positioned in oval frame)
+        cy_min, cy_max = int(h * 0.15), int(h * 0.85)
+        cx_min, cx_max = int(w * 0.15), int(w * 0.85)
+        center_roi = img_bgr[cy_min:cy_max, cx_min:cx_max]
 
-            resized = _cv2.resize(face_roi, (32, 32)).flatten().astype(np.float32)
+        if _cv2 is not None:
+            gray = _cv2.cvtColor(center_roi, _cv2.COLOR_BGR2GRAY)
+            resized = _cv2.resize(gray, (32, 32)).flatten().astype(np.float32)
         else:
-            # Pure PIL/NumPy grayscale and downsampling fallback
-            if img_bgr.ndim == 3:
-                gray = np.dot(img_bgr[..., :3], [0.114, 0.587, 0.299]) # BGR to Gray
+            if center_roi.ndim == 3:
+                gray = np.dot(center_roi[..., :3], [0.114, 0.587, 0.299])
             else:
-                gray = img_bgr
+                gray = center_roi
             
-            # Simple 32x32 block average resizing using numpy
-            h, w = gray.shape[:2]
-            h_step = max(1, h // 32)
-            w_step = max(1, w // 32)
+            rh, rw = gray.shape[:2]
+            h_step = max(1, rh // 32)
+            w_step = max(1, rw // 32)
             resized = gray[::h_step, ::w_step][:32, :32].flatten().astype(np.float32)
             if len(resized) < 1024:
                 resized = np.pad(resized, (0, 1024 - len(resized)), 'constant')
