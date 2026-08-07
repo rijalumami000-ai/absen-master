@@ -61,6 +61,7 @@ async def init_db():
         await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS face_registered_at TIMESTAMP"))
         await conn.execute(text("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS face_confidence INTEGER"))
         await conn.execute(text("ALTER TABLE academic_years ADD COLUMN IF NOT EXISTS sekolah_info_year_id INTEGER"))
+        await conn.execute(text("ALTER TABLE settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP"))
         
         # Alter existing columns if they were created with conflicting types (e.g. BYTEA or TIMESTAMPTZ)
         try:
