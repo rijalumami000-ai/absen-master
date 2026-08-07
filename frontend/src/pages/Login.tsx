@@ -72,7 +72,7 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       overflowX: 'hidden',
       overflowY: 'auto'
     }}>
-      <div style={{
+      <div className="login-grid" style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         width: '100%',
@@ -80,7 +80,7 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       }}>
         
         {/* Left Side: Hero Section with Dynamic Background Image & Glass Cards */}
-        <div style={{
+        <div className="login-hero-side" style={{
           position: 'relative',
           backgroundImage: `url('${bgImage}')`,
           backgroundSize: 'cover',
@@ -268,7 +268,7 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
         </div>
 
         {/* Right Side: Form Container (50% Split, Perfectly Centered) */}
-        <div style={{
+        <div className="login-form-side" style={{
           backgroundColor: '#ffffff',
           display: 'flex',
           flexDirection: 'column',
@@ -317,7 +317,7 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
             </p>
 
             {/* Form Card */}
-            <div style={{
+            <div className="login-form-card" style={{
               backgroundColor: '#ffffff',
               borderRadius: '28px',
               padding: '36px 32px',

@@ -540,12 +540,12 @@ export const AbsensiWajah: React.FC = () => {
       </div>
 
       {/* Main Grid Content */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '24px' }}>
+      <div className="absensi-wajah-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '24px' }}>
         
         {/* Left Column: Live Camera & Scanner */}
         <div>
           {/* Prayer Time Selector Tabs */}
-          <div style={{ 
+          <div className="prayer-tabs-container" style={{ 
             display: 'flex', 
             gap: '8px', 
             marginBottom: '16px', 
@@ -561,6 +561,7 @@ export const AbsensiWajah: React.FC = () => {
                 <button
                   key={time}
                   onClick={() => handlePrayerTabClick(time)}
+                  className="prayer-tab-btn"
                   style={{
                     flex: 1,
                     padding: '12px 16px',

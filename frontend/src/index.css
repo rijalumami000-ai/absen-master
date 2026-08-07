@@ -939,3 +939,119 @@ select.form-control:focus {
   0% { transform: scale(0.65); opacity: 1; }
   80%, 100% { transform: scale(1.1); opacity: 0; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   MOBILE & TABLET RESPONSIVE SYSTEM (< 1024px & < 768px)
+   ───────────────────────────────────────────────────────────── */
+
+/* Grid Utility Overrides for Mobile */
+@media (max-width: 1024px) {
+  .absensi-wajah-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .grid-3 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .grid-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .login-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .login-hero-side {
+    display: none !important;
+  }
+
+  .login-form-side {
+    padding: 24px 16px !important;
+    min-height: 100vh !important;
+  }
+
+  .login-form-card {
+    padding: 24px 18px !important;
+    border-radius: 20px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column !important;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    height: auto !important;
+    padding: 12px 16px !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+  }
+
+  .sidebar.collapsed {
+    width: 100% !important;
+    padding: 12px 16px !important;
+  }
+
+  .sidebar.collapsed .sidebar-nav {
+    display: none !important;
+  }
+
+  .sidebar.collapsed .sidebar-widget {
+    display: none !important;
+  }
+
+  .sidebar.collapsed .sidebar-footer {
+    display: none !important;
+  }
+
+  .sidebar-header {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+  }
+
+  .main-content {
+    padding: 16px !important;
+  }
+
+  .page-container {
+    padding: 12px !important;
+  }
+
+  .grid-3, .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Table horizontal scroll wrapper for phone screens */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 16px;
+  }
+
+  .prayer-tabs-container {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px !important;
+  }
+
+  .prayer-tab-btn {
+    min-width: 80px !important;
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+  }
+}
