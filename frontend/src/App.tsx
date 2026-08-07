@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { BridgeControlModal } from './components/BridgeControlModal';
 import { ScanAbsensi } from './pages/ScanAbsensi';
+import { AbsensiWajah } from './pages/AbsensiWajah';
 import { PusatData } from './pages/PusatData';
 import { AbsensiManual } from './pages/AbsensiManual';
 import { KirimLaporan } from './pages/KirimLaporan';
@@ -16,6 +17,8 @@ export const App: React.FC = () => {
     switch (activeTab) {
       case 'scan':
         return <ScanAbsensi />;
+      case 'scan-wajah':
+        return <AbsensiWajah />;
       case 'data':
         return <PusatData />;
       case 'manual':

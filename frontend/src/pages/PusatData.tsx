@@ -9,9 +9,12 @@ import {
   Search, 
   CheckCircle, 
   User,
-  Calendar
+  Calendar,
+  Camera,
+  Sparkles
 } from 'lucide-react';
 import { academicYearService, santriService, fingerprintService, attendanceService } from '../services/api';
+import { FaceEnrollModal } from '../components/FaceEnrollModal';
 
 export const PusatData: React.FC = () => {
   // Academic Year State
@@ -49,6 +52,12 @@ export const PusatData: React.FC = () => {
   });
   const [enrollStep, setEnrollStep] = useState<number>(0); // 0, 1, 2, 3
   const [enrollLogs, setEnrollLogs] = useState<string[]>([]);
+
+  // Face Registration Modal
+  const [faceEnrollModal, setFaceEnrollModal] = useState<{ isOpen: boolean; santri: any }>({
+    isOpen: false,
+    santri: null
+  });
 
   // Load Initial Data
   const loadAcademicYears = async () => {
@@ -387,13 +396,14 @@ export const PusatData: React.FC = () => {
                 <th>Nama Ibu</th>
                 <th>WhatsApp Wali</th>
                 <th>Sidik Jari</th>
+                <th>Wajah AI</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
               {filteredSantri.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
                     Tidak ada data santri ditemukan.
                   </td>
                 </tr>
@@ -461,6 +471,19 @@ export const PusatData: React.FC = () => {
                         )}
                       </td>
                       <td>
+                        {s.has_face_registered ? (
+                          <span className="badge badge-hadir" style={{ backgroundColor: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe' }}>
+                            <Camera size={12} />
+                            Terdaftar
+                          </span>
+                        ) : (
+                          <span className="badge badge-alfa">
+                            <Camera size={12} />
+                            Belum
+                          </span>
+                        )}
+                      </td>
+                      <td>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button 
                             onClick={() => handleStartEnroll(s.id, s.name)} 
@@ -474,6 +497,21 @@ export const PusatData: React.FC = () => {
                           >
                             <Fingerprint size={14} />
                             Daftar Jari
+                          </button>
+
+                          <button 
+                            onClick={() => setFaceEnrollModal({ isOpen: true, santri: s })} 
+                            className="btn btn-secondary" 
+                            style={{ 
+                              padding: '6px 10px', 
+                              fontSize: '12px',
+                              borderColor: s.has_face_registered ? 'var(--border-color)' : '#6366f1',
+                              color: s.has_face_registered ? 'var(--text-muted)' : '#6366f1'
+                            }}
+                            title="Daftar / Update foto wajah santri untuk AI Face Recognition"
+                          >
+                            <Camera size={14} />
+                            Foto Wajah
                           </button>
                           
                           {/* Show edit and delete actions only for manually added students */}
@@ -731,6 +769,14 @@ export const PusatData: React.FC = () => {
         </div>,
         document.body
       )}
+
+      {/* Face Registration Modal */}
+      <FaceEnrollModal
+        isOpen={faceEnrollModal.isOpen}
+        santri={faceEnrollModal.santri}
+        onClose={() => setFaceEnrollModal({ isOpen: false, santri: null })}
+        onSuccess={loadSantri}
+      />
     </div>
   );
 };

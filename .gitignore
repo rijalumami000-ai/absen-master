@@ -50,3 +50,7 @@ Thumbs.db
 /mobile-kotlin/.idea/
 /mobile-kotlin/local.properties
 
+*.db
+backend/*.db
+
+

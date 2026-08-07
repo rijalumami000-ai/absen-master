@@ -7,6 +7,7 @@ import {
   TrendingUp, 
   Settings as SettingsIcon,
   Fingerprint,
+  Camera,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -110,9 +111,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
       items: [
         { 
           id: 'scan', 
-          label: 'Absensi Scan', 
+          label: 'Absensi Sidik Jari', 
           icon: Fingerprint,
           badge: { type: 'live', text: 'Live' }
+        },
+        { 
+          id: 'scan-wajah', 
+          label: 'Absensi Wajah', 
+          icon: Camera,
+          badge: { type: 'live', text: 'AI' }
         },
         { 
           id: 'manual', 

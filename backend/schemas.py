@@ -42,6 +42,7 @@ class SantriOut(BaseModel):
     parent_phone: str
     fingerprint_id: Optional[str] = None
     has_fingerprint: bool = False
+    has_face_registered: bool = False
     academic_year_id: Optional[int] = None
     sekolah_info_santri_id: Optional[int] = None
     mother_name: Optional[str] = None
@@ -146,3 +147,24 @@ class SettingOut(BaseModel):
 # ── Auth ───────────────────────────────────────────────────────
 class PasswordVerify(BaseModel):
     password: str
+
+
+# ── Face Recognition ──────────────────────────────────────────
+class FaceEnrollRequest(BaseModel):
+    santri_id: int
+    image_base64: str  # Base64 encoded image (JPEG/PNG)
+
+class FaceScanRequest(BaseModel):
+    image_base64: str  # Base64 encoded crop/frame of face
+    prayer_time: str   # Subuh, Dzuhur, Ashar, Maghrib, Isya
+
+class FaceScanResponse(BaseModel):
+    matched: bool
+    santri_id: Optional[int] = None
+    santri_name: Optional[str] = None
+    room: Optional[str] = None
+    confidence: float = 0.0  # percentage (e.g. 92.5)
+    prayer_time: Optional[str] = None
+    status: Optional[str] = None
+    scanned_at: Optional[str] = None
+    message: str

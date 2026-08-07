@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from .database import init_db
-from .routers import academic_years, santri, fingerprint, attendance, rekap, whatsapp, settings
+from .routers import academic_years, santri, fingerprint, face, attendance, rekap, whatsapp, settings
 import os
 
 @asynccontextmanager
@@ -74,6 +74,7 @@ app.add_middleware(
 app.include_router(academic_years.router)
 app.include_router(santri.router)
 app.include_router(fingerprint.router)
+app.include_router(face.router)
 app.include_router(attendance.router)
 app.include_router(rekap.router)
 app.include_router(whatsapp.router)

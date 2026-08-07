@@ -34,6 +34,9 @@ class Santri(Base):
     sekolah_info_santri_id = Column(Integer, unique=True, nullable=True)
     mother_name = Column(String(150), nullable=True)
     photo_url = Column(String(500), nullable=True)
+    face_embedding = Column(Text, nullable=True)  # JSON-encoded array of 512 floats
+    has_face_registered = Column(Boolean, default=False)
+    face_registered_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     academic_year = relationship("AcademicYear", back_populates="santri_list")
@@ -61,9 +64,10 @@ class Attendance(Base):
     )
     method = Column(
         String(20),
-        CheckConstraint("method IN ('Fingerprint','Manual')"),
+        CheckConstraint("method IN ('Fingerprint','Manual','Face')"),
         nullable=False,
     )
+    face_confidence = Column(Integer, nullable=True)  # Percentage 0-100%
     scanned_at = Column(DateTime, nullable=True)
     academic_year_id = Column(Integer, ForeignKey("academic_years.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

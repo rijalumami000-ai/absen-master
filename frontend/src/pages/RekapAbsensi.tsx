@@ -385,7 +385,16 @@ export const RekapAbsensi: React.FC = () => {
                       </span>
                     </td>
                     <td>
-                      <span style={{ fontSize: '13px' }}>{log.method}</span>
+                      <span style={{ 
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        padding: log.method === 'Face' ? '3px 8px' : '0',
+                        borderRadius: log.method === 'Face' ? '6px' : '0',
+                        backgroundColor: log.method === 'Face' ? '#e0e7ff' : 'transparent',
+                        color: log.method === 'Face' ? '#4338ca' : 'inherit',
+                      }}>
+                        {log.method}
+                      </span>
                     </td>
                     <td>
                       {log.scanned_at ? (

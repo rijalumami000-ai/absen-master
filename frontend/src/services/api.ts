@@ -90,4 +90,13 @@ export const settingsService = {
   getFingerprintLogs: () => api.get('/api/settings/fingerprint-logs').then(r => r.data),
 };
 
+export const faceService = {
+  register: (santriId: number, imageBase64: string) => 
+    api.post('/api/face/register', { santri_id: santriId, image_base64: imageBase64 }).then(r => r.data),
+  scan: (data: { image_base64: string; prayer_time: string }) => 
+    api.post('/api/face/scan', data).then(r => r.data),
+  unregister: (santriId: number) => 
+    api.delete(`/api/face/unregister/${santriId}`).then(r => r.data),
+};
+
 export default api;
