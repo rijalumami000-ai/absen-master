@@ -164,8 +164,13 @@ export const FaceEnrollModal: React.FC<FaceEnrollModalProps> = ({
       }, 1500);
     } catch (err: any) {
       console.error('Error saving face enrollment:', err);
-      const detail = err.response?.data?.detail || 'Gagal mengekstrak fitur wajah. Pastikan foto wajah terlihat jelas.';
-      setErrorMessage(detail);
+      const rawDetail = err.response?.data?.detail;
+      const detailStr = typeof rawDetail === 'string'
+        ? rawDetail
+        : typeof rawDetail === 'object' && rawDetail !== null
+          ? (rawDetail.msg || JSON.stringify(rawDetail))
+          : (err.message || 'Gagal mengekstrak fitur wajah. Pastikan foto wajah terlihat jelas.');
+      setErrorMessage(detailStr);
     } finally {
       setIsLoading(false);
     }
