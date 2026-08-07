@@ -16,7 +16,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
+import com.alhamid.absen.mobile.ui.screens.FaceScanScreen
 import com.alhamid.absen.mobile.ui.screens.HomeScreen
+import com.alhamid.absen.mobile.ui.screens.LoginScreen
 import com.alhamid.absen.mobile.ui.screens.ManualAttendanceScreen
 import com.alhamid.absen.mobile.ui.screens.RekapAttendanceScreen
 import com.alhamid.absen.mobile.ui.theme.AbsensiTheme
@@ -80,13 +82,20 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AbsensiTheme {
-                var currentScreen by remember { mutableStateOf("home") }
+                var currentScreen by remember { mutableStateOf("login") }
 
                 when (currentScreen) {
+                    "login" -> LoginScreen(
+                        onLoginSuccess = { currentScreen = "home" }
+                    )
                     "home" -> HomeScreen(
                         viewModel = viewModel,
+                        onNavigateToFaceScan = { currentScreen = "face" },
                         onNavigateToManual = { currentScreen = "manual" },
                         onNavigateToRekap = { currentScreen = "rekap" }
+                    )
+                    "face" -> FaceScanScreen(
+                        onNavigateBack = { currentScreen = "home" }
                     )
                     "manual" -> ManualAttendanceScreen(
                         viewModel = viewModel,

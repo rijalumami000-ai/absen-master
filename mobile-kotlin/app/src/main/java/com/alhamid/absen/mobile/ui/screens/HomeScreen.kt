@@ -38,6 +38,7 @@ import com.alhamid.absen.mobile.ui.viewmodel.AttendanceViewModel
 @Composable
 fun HomeScreen(
     viewModel: AttendanceViewModel,
+    onNavigateToFaceScan: () -> Unit,
     onNavigateToManual: () -> Unit,
     onNavigateToRekap: () -> Unit
 ) {
@@ -366,10 +367,42 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // BOTTOM NAVIGATION BUTTONS ROW: ABSENSI MANUAL & REKAP ABSENSI
+            // BOTTOM NAVIGATION BUTTONS ROW: ABSENSI WAJAH, MANUAL & REKAP ABSENSI
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                Button(
+                    onClick = onNavigateToFaceScan,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    contentPadding = PaddingValues(),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF10B981),
+                                    Color(0xFF059669)
+                                )
+                            ),
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "📸  ABSENSI WAJAH AI",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                }
+
                 Button(
                     onClick = onNavigateToManual,
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
@@ -377,7 +410,7 @@ fun HomeScreen(
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp)
+                        .height(50.dp)
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
@@ -394,8 +427,8 @@ fun HomeScreen(
                     ) {
                         Text(
                             text = "📋  BUKA ABSENSI MANUAL",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
                             color = Color.White,
                             letterSpacing = 0.5.sp
                         )
