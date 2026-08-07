@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Camera, 
@@ -41,15 +42,24 @@ export const FaceEnrollModal: React.FC<FaceEnrollModalProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Initialize WebCam stream when modal opens
   useEffect(() => {
-    if (!isOpen || activeTab !== 'camera') return;
+    if (!isOpen || activeTab !== 'camera') {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      setCameraActive(false);
+      return;
+    }
 
-    let stream: MediaStream | null = null;
+    let isMounted = true;
     const startCamera = async () => {
       try {
         setErrorMessage(null);
+        let stream: MediaStream;
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: { width: 640, height: 480, facingMode: 'user' },
@@ -62,12 +72,24 @@ export const FaceEnrollModal: React.FC<FaceEnrollModalProps> = ({
           });
         }
 
+        if (!isMounted) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          await videoRef.current.play();
+          try {
+            await videoRef.current.play();
+          } catch (e) {
+            console.log('Video play error:', e);
+          }
           setCameraActive(true);
         }
       } catch (err) {
+        if (!isMounted) return;
         console.error('Camera access error:', err);
         setErrorMessage('Gagal membuka kamera web. Gunakan opsi unggah foto.');
         setCameraActive(false);
@@ -77,8 +99,10 @@ export const FaceEnrollModal: React.FC<FaceEnrollModalProps> = ({
     startCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      isMounted = false;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
       setCameraActive(false);
     };
@@ -169,7 +193,7 @@ export const FaceEnrollModal: React.FC<FaceEnrollModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div style={{
       position: 'fixed',
       inset: 0,
@@ -551,6 +575,7 @@ export const FaceEnrollModal: React.FC<FaceEnrollModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
