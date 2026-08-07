@@ -322,14 +322,14 @@ export const Pengaturan: React.FC = () => {
           <div className="card">
             <h3 className="card-title">
               <Smartphone size={18} color="var(--accent-primary)" />
-              Aplikasi Mobile Android (APK Release)
+              Aplikasi Mobile Android (APK Native Kotlin v1.0.2)
             </h3>
             
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>
-              Unduh installer resmi (.APK) versi produksi terbaru untuk di-install pada Smartphone atau Tablet Android pengurus/santri.
+              Unduh installer resmi (.APK) Native Kotlin produksi versi 1.0.2 terbaru dengan Kamera Absensi Wajah AI & Suara Manusia gTTS.
             </p>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '14px', border: '1px solid var(--border-color)', marginBottom: '12px' }}>
               <div style={{
                 width: '48px',
                 height: '48px',
@@ -342,17 +342,21 @@ export const Pengaturan: React.FC = () => {
                 <Smartphone size={24} color="#10b981" />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>MASTER ABSENSI Mobile v1.0.0</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Format .APK • Android Native (Kotlin)</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>MASTER ABSENSI Mobile v1.0.2 Native</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Format .APK • Native Kotlin + CameraX</div>
               </div>
               <a
-                href="/app-debug.apk"
-                download="MASTER_ABSENSI_v1.0.0.apk"
+                href={`/app-debug.apk?v=1.0.2&t=${Date.now()}`}
+                download="MASTER_ABSENSI_v1.0.2.apk"
                 className="btn btn-primary"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}
               >
-                <Download size={16} /> Unduh APK
+                <Download size={16} /> Unduh APK v1.0.2
               </a>
+            </div>
+
+            <div style={{ fontSize: '12px', color: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.08)', padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+              💡 <strong>Tips Pemasangan:</strong> Jika di HP/Tablet Anda sudah pernah terpasang aplikasi versi lama, harap <strong>Uninstall (Hapus Aplikasi)</strong> versi lama terlebih dahulu sebelum memasang APK v1.0.2 baru.
             </div>
           </div>
           </div>
