@@ -1,5 +1,6 @@
 package com.alhamid.absen.mobile.data.remote
 
+import com.google.gson.annotations.SerializedName
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Response
@@ -9,6 +10,22 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import java.util.concurrent.TimeUnit
+
+data class FaceScanRequestDto(
+    @SerializedName("image_base64") val imageBase64: String,
+    @SerializedName("prayer_time") val prayerTime: String
+)
+
+data class FaceScanResponseDto(
+    val matched: Boolean,
+    val message: String,
+    @SerializedName("santri_name") val santriName: String? = null,
+    @SerializedName("santri_room") val santriRoom: String? = null,
+    @SerializedName("santri_gender") val santriGender: String? = null,
+    @SerializedName("photo_url") val photoUrl: String? = null,
+    val time: String? = null,
+    val confidence: Double? = null
+)
 
 interface ApiService {
 
@@ -20,6 +37,9 @@ interface ApiService {
 
     @POST("attendance/manual")
     suspend fun postAttendance(@Body request: AttendanceRequest): Response<Unit>
+
+    @POST("face/scan_face")
+    suspend fun scanFace(@Body request: FaceScanRequestDto): Response<FaceScanResponseDto>
 
     companion object {
         private const val BASE_URL = "https://absen.alhamidcintamulya.my.id/api/"

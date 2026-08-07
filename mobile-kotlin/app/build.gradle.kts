@@ -80,6 +80,13 @@ dependencies {
     // Coil (Image Loading for Compose)
     implementation("io.coil-kt:coil-compose:2.4.0")
 
+    // CameraX for Native Face Scanning
+    val cameraVersion = "1.3.1"
+    implementation("androidx.camera:camera-core:$cameraVersion")
+    implementation("androidx.camera:camera-camera2:$cameraVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraVersion")
+    implementation("androidx.camera:camera-view:$cameraVersion")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
