@@ -56,6 +56,9 @@ async def init_db():
         await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS sekolah_info_santri_id INTEGER"))
         await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS mother_name VARCHAR(150)"))
         await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500)"))
+        await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS has_face_registered BOOLEAN DEFAULT FALSE"))
+        await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS face_embedding BYTEA"))
+        await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS face_registered_at TIMESTAMP WITH TIME ZONE"))
         await conn.execute(text("ALTER TABLE academic_years ADD COLUMN IF NOT EXISTS sekolah_info_year_id INTEGER"))
         
         # Add unique constraints separately
