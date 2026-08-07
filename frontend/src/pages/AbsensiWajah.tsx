@@ -178,15 +178,104 @@ export const AbsensiWajah: React.FC = () => {
     };
   }, []);
 
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Initialize & Unlock Audio Context for Mobile/Tablet
+  const unlockAudio = () => {
+    try {
+      if (!audioCtxRef.current) {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtxRef.current = new AudioContextClass();
+        }
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+      if ('speechSynthesis' in window) {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      }
+    } catch (e) {
+      console.warn('Unlock audio error:', e);
+    }
+  };
+
+  // Listen to user interaction to unlock audio on mobile
+  useEffect(() => {
+    const handleTouchStart = () => unlockAudio();
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('click', handleTouchStart, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('click', handleTouchStart);
+    };
+  }, []);
+
+  // Play crisp success chime (Beep sound for mobile & tablet)
+  const playSuccessChime = () => {
+    if (!soundEnabled) return;
+    try {
+      unlockAudio();
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      
+      // Tone 1 (523.25 Hz - C5)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(523.25, now);
+      gain1.gain.setValueAtTime(0.3, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.2);
+
+      // Tone 2 (659.25 Hz - E5)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(659.25, now + 0.15);
+      gain2.gain.setValueAtTime(0.4, now + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.15);
+      osc2.stop(now + 0.45);
+    } catch (e) {
+      console.warn('Chime audio error:', e);
+    }
+  };
+
   // Text to Speech Audio Feedback
   const speakText = (text: string) => {
-    if (!soundEnabled || !('speechSynthesis' in window)) return;
+    if (!soundEnabled) return;
+
+    // Play chime sound first (guaranteed audio feedback on mobile)
+    playSuccessChime();
+
+    if (!('speechSynthesis' in window)) return;
     try {
+      unlockAudio();
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'id-ID';
       utterance.rate = 1.0;
       utterance.pitch = 1.1;
+
+      // Select Indonesian voice if available on Android/iOS
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        const idVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID') || v.name.toLowerCase().includes('indonesia'));
+        if (idVoice) {
+          utterance.voice = idVoice;
+        }
+      }
+
       window.speechSynthesis.speak(utterance);
     } catch (e) {
       console.error('Speech synthesis error:', e);
