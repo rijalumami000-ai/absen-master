@@ -73,6 +73,12 @@ async def init_db():
             await conn.execute(text("ALTER TABLE santri ALTER COLUMN face_registered_at TYPE TIMESTAMP WITHOUT TIME ZONE USING face_registered_at::timestamp without time zone"))
         except Exception:
             pass
+
+        try:
+            await conn.execute(text("ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_method_check"))
+            await conn.execute(text("ALTER TABLE attendance ADD CONSTRAINT attendance_method_check CHECK (method IN ('Fingerprint', 'Manual', 'Face'))"))
+        except Exception:
+            pass
         
         # Add unique constraints separately
         try:
