@@ -160,7 +160,7 @@ async def scan_face(data: FaceScanRequest, db: AsyncSession = Depends(get_db)):
     santri_tuples = [(row[0], row[1]) for row in rows]
 
     # 4. Perform vector similarity matching
-    matched_id, similarity = find_matching_santri(target_vec, santri_tuples, threshold=0.60)
+    matched_id, similarity = find_matching_santri(target_vec, santri_tuples, threshold=0.40)
 
     if not matched_id:
         confidence_pct = round(similarity * 100, 1)

@@ -193,75 +193,86 @@ export const AbsensiWajah: React.FC = () => {
     }
   };
 
+  // Single scan execution for manual submit or auto loop
+  const performSingleScan = async () => {
+    if (!videoRef.current || !canvasRef.current || isProcessingFrame || !cameraActive) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
+    setIsProcessingFrame(true);
+
+    try {
+      const res = await faceService.scan({
+        image_base64: imageBase64,
+        prayer_time: prayerTime
+      });
+
+      if (res.matched && res.santri_name) {
+        const now = Date.now();
+
+        // Anti duplicate spam check (3 seconds debounce per santri)
+        if (
+          lastScannedSantriRef.current &&
+          lastScannedSantriRef.current.id === res.santri_id &&
+          now - lastScannedSantriRef.current.time < 3000
+        ) {
+          setIsProcessingFrame(false);
+          return;
+        }
+
+        lastScannedSantriRef.current = { id: res.santri_id!, time: now };
+
+        setScanResult({
+          matched: true,
+          name: res.santri_name,
+          room: res.room,
+          confidence: res.confidence,
+          message: res.message,
+          timestamp: new Date().toLocaleTimeString('id-ID')
+        });
+
+        // Trigger audio feedback
+        speakText(`${res.santri_name}, Hadir ${res.prayer_time}`);
+      } else {
+        setScanResult({
+          matched: false,
+          message: res.message || 'Wajah tidak terdeteksi atau belum cocok.',
+          confidence: res.confidence,
+          timestamp: new Date().toLocaleTimeString('id-ID')
+        });
+      }
+    } catch (err: any) {
+      console.error('Scan face request failed:', err);
+      const detailMsg = err.response?.data?.detail || 'Gagal terhubung ke server absensi wajah.';
+      setScanResult({
+        matched: false,
+        message: detailMsg,
+        timestamp: new Date().toLocaleTimeString('id-ID')
+      });
+    } finally {
+      setIsProcessingFrame(false);
+    }
+  };
+
   // Capture frame & scan loop
   useEffect(() => {
     if (!isScanning || !cameraActive || isProcessingFrame) return;
 
-    scanIntervalRef.current = setInterval(async () => {
-      if (!videoRef.current || !canvasRef.current || isProcessingFrame) return;
-
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-
-      if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
-
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageBase64 = canvas.toDataURL('image/jpeg', 0.85);
-
-      setIsProcessingFrame(true);
-
-      try {
-        const res = await faceService.scan({
-          image_base64: imageBase64,
-          prayer_time: prayerTime
-        });
-
-        if (res.matched && res.santri_name) {
-          const now = Date.now();
-
-          // Anti duplicate spam check (3 seconds debounce per santri)
-          if (
-            lastScannedSantriRef.current &&
-            lastScannedSantriRef.current.id === res.santri_id &&
-            now - lastScannedSantriRef.current.time < 4000
-          ) {
-            setIsProcessingFrame(false);
-            return;
-          }
-
-          lastScannedSantriRef.current = { id: res.santri_id!, time: now };
-
-          setScanResult({
-            matched: true,
-            name: res.santri_name,
-            room: res.room,
-            confidence: res.confidence,
-            message: res.message,
-            timestamp: new Date().toLocaleTimeString('id-ID')
-          });
-
-          // Trigger audio feedback
-          speakText(`${res.santri_name}, Hadir ${res.prayer_time}`);
-        } else if (res.message && res.message.includes('tidak cocok')) {
-          setScanResult({
-            matched: false,
-            message: res.message,
-            confidence: res.confidence,
-            timestamp: new Date().toLocaleTimeString('id-ID')
-          });
-        }
-      } catch (err) {
-        console.error('Scan face request failed:', err);
-      } finally {
-        setIsProcessingFrame(false);
-      }
-    }, 600);
+    scanIntervalRef.current = setInterval(() => {
+      performSingleScan();
+    }, 800);
 
     return () => {
       if (scanIntervalRef.current) {
@@ -582,6 +593,42 @@ export const AbsensiWajah: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Submit Action Button for Manual Trigger */}
+          <div style={{ marginTop: '16px' }}>
+            <button
+              onClick={performSingleScan}
+              disabled={!cameraActive || isProcessingFrame}
+              style={{
+                width: '100%',
+                backgroundColor: '#4f46e5',
+                color: '#ffffff',
+                border: 'none',
+                padding: '16px 24px',
+                borderRadius: '18px',
+                fontWeight: 800,
+                fontSize: '16px',
+                cursor: !cameraActive || isProcessingFrame ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                boxShadow: '0 10px 25px -5px rgba(79, 70, 229, 0.4)',
+                opacity: !cameraActive || isProcessingFrame ? 0.7 : 1,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {isProcessingFrame ? (
+                <>
+                  <RefreshCw size={22} className="spin-icon" /> Memproses Pindaian Wajah...
+                </>
+              ) : (
+                <>
+                  <UserCheck size={24} /> Pindai & Absen Wajah Sekarang (Submit)
+                </>
+              )}
+            </button>
           </div>
         </div>
 
