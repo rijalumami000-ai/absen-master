@@ -6,17 +6,25 @@ import {
   Database,
   RefreshCw,
   Eye,
-  EyeOff
+  EyeOff,
+  Building,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { settingsService } from '../services/api';
 import { AlertModal } from '../components/AlertModal';
 
 export const Pengaturan: React.FC = () => {
   const [settings, setSettings] = useState<any[]>([]);
+  const [appTitle, setAppTitle] = useState('MASTER ABSENSI Alhamid Cintamulya');
+  const [appIcon, setAppIcon] = useState('');
+  const [loginBgImage, setLoginBgImage] = useState('/login_bg.png');
   const [prayerPass, setPrayerPass] = useState('');
   const [waUrl, setWaUrl] = useState('');
   const [waToken, setWaToken] = useState('');
   const [showToken, setShowToken] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+  const [uploadingLoginBg, setUploadingLoginBg] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [alertState, setAlertState] = useState<{ isOpen: boolean; type: 'success' | 'error'; title: string; message: string }>({
     isOpen: false,
@@ -34,6 +42,15 @@ export const Pengaturan: React.FC = () => {
       const data = await settingsService.getAll();
       setSettings(data);
 
+      const titleSetting = data.find((s: any) => s.key === 'app_title');
+      if (titleSetting && titleSetting.value) setAppTitle(titleSetting.value);
+
+      const iconSetting = data.find((s: any) => s.key === 'app_icon');
+      if (iconSetting) setAppIcon(iconSetting.value);
+
+      const bgSetting = data.find((s: any) => s.key === 'login_bg_image');
+      if (bgSetting && bgSetting.value) setLoginBgImage(bgSetting.value);
+
       const passSetting = data.find((s: any) => s.key === 'prayer_change_password');
       if (passSetting) setPrayerPass(passSetting.value);
 
@@ -45,6 +62,66 @@ export const Pengaturan: React.FC = () => {
 
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingIcon(true);
+    try {
+      const res = await settingsService.uploadIcon(file);
+      if (res.icon_url) {
+        setAppIcon(res.icon_url);
+        window.dispatchEvent(new Event('app_settings_updated'));
+        setAlertState({
+          isOpen: true,
+          type: 'success',
+          title: 'Ikon Aplikasi Diperbarui',
+          message: 'Ikon aplikasi berhasil diunggah dan diperbarui.'
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setAlertState({
+        isOpen: true,
+        type: 'error',
+        title: 'Gagal Mengunggah',
+        message: 'Terjadi kesalahan saat mengunggah ikon aplikasi.'
+      });
+    } finally {
+      setUploadingIcon(false);
+    }
+  };
+
+  const handleLoginBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLoginBg(true);
+    try {
+      const res = await settingsService.uploadLoginBg(file);
+      if (res.bg_url) {
+        setLoginBgImage(res.bg_url);
+        window.dispatchEvent(new Event('app_settings_updated'));
+        setAlertState({
+          isOpen: true,
+          type: 'success',
+          title: 'Gambar Latar Login Diperbarui',
+          message: 'Gambar latar belakang halaman login berhasil diperbarui.'
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setAlertState({
+        isOpen: true,
+        type: 'error',
+        title: 'Gagal Mengunggah',
+        message: 'Terjadi kesalahan saat mengunggah gambar latar belakang login.'
+      });
+    } finally {
+      setUploadingLoginBg(false);
     }
   };
 
@@ -107,6 +184,108 @@ export const Pengaturan: React.FC = () => {
       <div className="grid-2">
         {/* Left Column: Form Settings */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* App Title & App Icon CRUD Card */}
+          <div className="card">
+            <h3 className="card-title">
+              <Building size={18} color="var(--accent-primary)" />
+              Identitas & Ikon Aplikasi
+            </h3>
+            
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>
+              Atur nama judul utama aplikasi dan unggah ikon khusus yang tampil pada Sidebar & Favicon browser.
+            </p>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Judul Aplikasi</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={appTitle}
+                  onChange={(e) => setAppTitle(e.target.value)}
+                  placeholder="MASTER ABSENSI Alhamid Cintamulya"
+                />
+                <button 
+                  onClick={() => {
+                    handleSaveSetting('app_title', appTitle);
+                    window.dispatchEvent(new Event('app_settings_updated'));
+                  }}
+                  className="btn btn-primary"
+                  disabled={savingKey === 'app_title'}
+                >
+                  {savingKey === 'app_title' ? 'Saving...' : 'Simpan'}
+                </button>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Ikon Aplikasi (Logo)</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '16px',
+                  backgroundColor: '#0f172a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  border: '1px solid #cbd5e1',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}>
+                  {appIcon ? (
+                    <img src={appIcon} alt="App Icon" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <ImageIcon size={28} color="#818cf8" />
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                    <Upload size={14} />
+                    {uploadingIcon ? 'Mengunggah...' : 'Unggah Ikon Baru'}
+                    <input type="file" accept="image/*" onChange={handleIconUpload} style={{ display: 'none' }} disabled={uploadingIcon} />
+                  </label>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Format PNG, JPG, SVG. Maks 2 MB.</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <label className="form-label">Gambar Latar Belakang Login</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{
+                  width: '90px',
+                  height: '56px',
+                  borderRadius: '12px',
+                  backgroundColor: '#0f172a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  border: '1px solid #cbd5e1',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}>
+                  {loginBgImage ? (
+                    <img src={loginBgImage} alt="Login Background" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <ImageIcon size={28} color="#818cf8" />
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                    <Upload size={14} />
+                    {uploadingLoginBg ? 'Mengunggah...' : 'Unggah Latar Login'}
+                    <input type="file" accept="image/*" onChange={handleLoginBgUpload} style={{ display: 'none' }} disabled={uploadingLoginBg} />
+                  </label>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Format PNG, JPG. Maks 5 MB.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Security lock password */}
           <div className="card">
             <h3 className="card-title">
@@ -243,7 +422,7 @@ export const Pengaturan: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {logs.map((log) => {
+                      {logs.map((log: any) => {
                         const isSuccess = log.status && log.status.includes("Sukses");
                         return (
                           <tr key={log.id}>
@@ -277,7 +456,7 @@ export const Pengaturan: React.FC = () => {
         type={alertState.type} 
         title={alertState.title} 
         message={alertState.message} 
-        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))} 
+        onClose={() => setAlertState((prev: any) => ({ ...prev, isOpen: false }))} 
       />
     </div>
   );

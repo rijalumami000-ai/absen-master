@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { santriService, attendanceService, rekapService } from '../services/api';
 import { AlertModal } from '../components/AlertModal';
+import { PrayerPasswordModal } from '../components/PrayerPasswordModal';
 
 export const AbsensiManual: React.FC = () => {
   const getActiveSholat = () => {
@@ -24,6 +25,24 @@ export const AbsensiManual: React.FC = () => {
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [prayerTime, setPrayerTime] = useState(getActiveSholat());
+  
+  // Password protection modal state for changing prayer time
+  const [pendingPrayerTime, setPendingPrayerTime] = useState<string | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState<boolean>(false);
+
+  const handlePrayerChangeSelect = (targetTime: string) => {
+    if (targetTime === prayerTime) return;
+    setPendingPrayerTime(targetTime);
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleConfirmPrayerChange = () => {
+    if (pendingPrayerTime) {
+      setPrayerTime(pendingPrayerTime);
+    }
+    setIsPasswordModalOpen(false);
+    setPendingPrayerTime(null);
+  };
   
   // Filtering
   const [rooms, setRooms] = useState<string[]>([]);
@@ -205,7 +224,7 @@ export const AbsensiManual: React.FC = () => {
             <select 
               className="form-control"
               value={prayerTime}
-              onChange={(e) => setPrayerTime(e.target.value)}
+              onChange={(e) => handlePrayerChangeSelect(e.target.value)}
             >
               <option value="Subuh">Subuh</option>
               <option value="Dzuhur">Dzuhur</option>
@@ -345,6 +364,16 @@ export const AbsensiManual: React.FC = () => {
         title={alertState.title} 
         message={alertState.message} 
         onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))} 
+      />
+
+      <PrayerPasswordModal
+        isOpen={isPasswordModalOpen}
+        targetPrayerTime={pendingPrayerTime || ''}
+        onConfirm={handleConfirmPrayerChange}
+        onClose={() => {
+          setIsPasswordModalOpen(false);
+          setPendingPrayerTime(null);
+        }}
       />
     </div>
   );

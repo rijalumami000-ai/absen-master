@@ -8,17 +8,34 @@ import { AbsensiManual } from './pages/AbsensiManual';
 import { KirimLaporan } from './pages/KirimLaporan';
 import { RekapAbsensi } from './pages/RekapAbsensi';
 import { Pengaturan } from './pages/Pengaturan';
+import { Login } from './pages/Login';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('scan');
+const AppContent: React.FC = () => {
+  // Default to Absensi Wajah ('scan-wajah') when site opens
+  const [activeTab, setActiveTab] = useState<string>('scan-wajah');
   const [isBridgeModalOpen, setIsBridgeModalOpen] = useState<boolean>(false);
+  const { isLoggedIn, logout } = useAuth();
+
+  // Pre-entry Authentication Gate: MUST login before entering website!
+  if (!isLoggedIn) {
+    return <Login onSuccess={() => setActiveTab('scan-wajah')} />;
+  }
+
+  const handleTabChange = (tab: string) => {
+    if (tab === 'logout') {
+      logout();
+      return;
+    }
+    setActiveTab(tab);
+  };
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'scan':
-        return <ScanAbsensi />;
       case 'scan-wajah':
         return <AbsensiWajah />;
+      case 'scan':
+        return <ScanAbsensi />;
       case 'data':
         return <PusatData />;
       case 'manual':
@@ -29,8 +46,10 @@ export const App: React.FC = () => {
         return <RekapAbsensi />;
       case 'settings':
         return <Pengaturan />;
+      case 'login':
+        return <Login onSuccess={() => setActiveTab('scan-wajah')} />;
       default:
-        return <ScanAbsensi />;
+        return <AbsensiWajah />;
     }
   };
 
@@ -38,7 +57,7 @@ export const App: React.FC = () => {
     <div className="app-container">
       <Sidebar 
         activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+        setActiveTab={handleTabChange} 
         onOpenBridgeModal={() => setIsBridgeModalOpen(true)}
       />
       <main className="main-content">
@@ -51,6 +70,14 @@ export const App: React.FC = () => {
         onClose={() => setIsBridgeModalOpen(false)} 
       />
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 

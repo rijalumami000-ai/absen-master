@@ -1,10 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import shutil
+import logging
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from ..database import get_db
 from ..models import Setting, FingerprintLog
 from ..schemas import SettingUpdate, SettingOut, PasswordVerify
 from typing import List
+
+logger = logging.getLogger("settings_router")
 
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
@@ -13,6 +19,9 @@ router = APIRouter(prefix="/api/settings", tags=["Settings"])
 async def get_settings(db: AsyncSession = Depends(get_db)):
     """Retrieve all app settings, inserting default values if not present."""
     default_settings = {
+        "app_title": "MASTER ABSENSI Alhamid Cintamulya",
+        "app_icon": "",
+        "login_bg_image": "/login_bg.png",
         "prayer_change_password": "alhamidku123",
         "wa_api_token": "",
         "wa_api_url": "https://api.fonnte.com/send",
@@ -50,6 +59,66 @@ async def update_setting(key: str, data: SettingUpdate, db: AsyncSession = Depen
     await db.commit()
     await db.refresh(setting)
     return setting
+
+
+@router.post("/upload-icon")
+async def upload_app_icon(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    """Upload custom app icon image."""
+    try:
+        os.makedirs("backend/static/uploads", exist_ok=True)
+        ext = os.path.splitext(file.filename)[1] or ".png"
+        filename = f"app_icon{ext}"
+        filepath = os.path.join("backend/static/uploads", filename)
+
+        with open(filepath, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        icon_url = f"/static/uploads/{filename}?t={int(datetime.now().timestamp())}"
+
+        # Save to setting table
+        res = await db.execute(select(Setting).where(Setting.key == "app_icon"))
+        setting = res.scalar_one_or_none()
+        if not setting:
+            setting = Setting(key="app_icon", value=icon_url)
+            db.add(setting)
+        else:
+            setting.value = icon_url
+        await db.commit()
+
+        return {"success": True, "icon_url": icon_url}
+    except Exception as e:
+        logger.error(f"Error uploading app icon: {e}")
+        raise HTTPException(500, f"Gagal mengunggah ikon aplikasi: {e}")
+
+
+@router.post("/upload-login-bg")
+async def upload_login_bg(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    """Upload custom background image for login page."""
+    try:
+        os.makedirs("backend/static/uploads", exist_ok=True)
+        ext = os.path.splitext(file.filename)[1] or ".png"
+        filename = f"login_bg{ext}"
+        filepath = os.path.join("backend/static/uploads", filename)
+
+        with open(filepath, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        bg_url = f"/static/uploads/{filename}?t={int(datetime.now().timestamp())}"
+
+        # Save to setting table
+        res = await db.execute(select(Setting).where(Setting.key == "login_bg_image"))
+        setting = res.scalar_one_or_none()
+        if not setting:
+            setting = Setting(key="login_bg_image", value=bg_url)
+            db.add(setting)
+        else:
+            setting.value = bg_url
+        await db.commit()
+
+        return {"success": True, "bg_url": bg_url}
+    except Exception as e:
+        logger.error(f"Error uploading login background: {e}")
+        raise HTTPException(500, f"Gagal mengunggah gambar latar login: {e}")
 
 
 @router.post("/verify-password")

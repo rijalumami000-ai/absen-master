@@ -88,6 +88,24 @@ export const settingsService = {
   update: (key: string, value: string) => api.put(`/api/settings/${key}`, { value }).then(r => r.data),
   verifyPassword: (password: string) => api.post('/api/settings/verify-password', { password }).then(r => r.data),
   getFingerprintLogs: () => api.get('/api/settings/fingerprint-logs').then(r => r.data),
+  uploadIcon: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post('/api/settings/upload-icon', fd, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }).then(r => r.data);
+  },
+  uploadLoginBg: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post('/api/settings/upload-login-bg', fd, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }).then(r => r.data);
+  }
 };
 
 export const faceService = {

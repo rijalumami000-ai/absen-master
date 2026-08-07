@@ -12,6 +12,7 @@ import {
   Award
 } from 'lucide-react';
 import { academicYearService, santriService, rekapService } from '../services/api';
+import { formatTimeOnly } from '../utils/formatters';
 
 export const RekapAbsensi: React.FC = () => {
   // Filters State
@@ -151,7 +152,7 @@ export const RekapAbsensi: React.FC = () => {
         log.prayer_time,
         log.status,
         log.method,
-        log.scanned_at ? new Date(log.scanned_at).toLocaleTimeString('id-ID', { hour12: false }) : '-'
+        formatTimeOnly(log.scanned_at)
       ];
       csvRows.push(row.join(","));
     });
@@ -515,7 +516,7 @@ export const RekapAbsensi: React.FC = () => {
                 <td style={printTdStyle}>{log.prayer_time}</td>
                 <td style={{ ...printTdStyle, fontWeight: 600 }}>{log.status}</td>
                 <td style={printTdStyle}>
-                  {log.scanned_at ? new Date(log.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
+                  {formatTimeOnly(log.scanned_at)}
                 </td>
               </tr>
             ))}

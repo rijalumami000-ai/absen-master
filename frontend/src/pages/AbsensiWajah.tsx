@@ -15,6 +15,8 @@ import {
   Users
 } from 'lucide-react';
 import { faceService, attendanceService } from '../services/api';
+import { PrayerPasswordModal } from '../components/PrayerPasswordModal';
+import { formatTimeOnly } from '../utils/formatters';
 
 interface AttendanceLog {
   id: number;
@@ -47,6 +49,23 @@ export const AbsensiWajah: React.FC = () => {
   const [faceCount, setFaceCount] = useState<number>(0);
   const [isProcessingFrame, setIsProcessingFrame] = useState<boolean>(false);
 
+  const [pendingPrayerTime, setPendingPrayerTime] = useState<string | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState<boolean>(false);
+
+  const handlePrayerTabClick = (targetTime: string) => {
+    if (targetTime === prayerTime) return;
+    setPendingPrayerTime(targetTime);
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleConfirmPrayerChange = () => {
+    if (pendingPrayerTime) {
+      setPrayerTime(pendingPrayerTime);
+    }
+    setIsPasswordModalOpen(false);
+    setPendingPrayerTime(null);
+  };
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const scanIntervalRef = useRef<any>(null);
@@ -76,7 +95,7 @@ export const AbsensiWajah: React.FC = () => {
             status: item.status,
             method: item.method,
             confidence: item.face_confidence,
-            scanned_at: item.scanned_at ? new Date(item.scanned_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'
+            scanned_at: formatTimeOnly(item.scanned_at)
           }));
           setTodayLogs(mapped);
           setFaceCount(mapped.filter(m => m.method === 'Face').length);
@@ -541,7 +560,7 @@ export const AbsensiWajah: React.FC = () => {
               return (
                 <button
                   key={time}
-                  onClick={() => setPrayerTime(time)}
+                  onClick={() => handlePrayerTabClick(time)}
                   style={{
                     flex: 1,
                     padding: '12px 16px',
@@ -913,6 +932,17 @@ export const AbsensiWajah: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Password Protection Modal for Prayer Time Switching */}
+      <PrayerPasswordModal
+        isOpen={isPasswordModalOpen}
+        targetPrayerTime={pendingPrayerTime || ''}
+        onConfirm={handleConfirmPrayerChange}
+        onClose={() => {
+          setIsPasswordModalOpen(false);
+          setPendingPrayerTime(null);
+        }}
+      />
     </div>
   );
 };

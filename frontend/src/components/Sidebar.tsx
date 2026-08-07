@@ -19,8 +19,13 @@ import {
   Award,
   RefreshCw,
   Rocket,
-  Download
+  Download,
+  ShieldCheck,
+  LogIn,
+  LogOut
 } from 'lucide-react';
+import { settingsService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
   activeTab: string;
@@ -46,11 +51,39 @@ interface MenuGroup {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpenBridgeModal }) => {
+  const { isLoggedIn, user, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [bridgeStatus, setBridgeStatus] = useState<'online' | 'offline'>('offline');
   const [bridgeMode, setBridgeMode] = useState<'verify' | 'register'>('verify');
   const [isLaunchingBridge, setIsLaunchingBridge] = useState<boolean>(false);
+  
+  const [appTitle, setAppTitle] = useState<string>('MASTER ABSENSI Alhamid Cintamulya');
+  const [appIcon, setAppIcon] = useState<string>('');
+
+  const loadAppSettings = async () => {
+    try {
+      const settings = await settingsService.getAll();
+      const titleS = settings.find((s: any) => s.key === 'app_title');
+      if (titleS && titleS.value) {
+        setAppTitle(titleS.value);
+        document.title = titleS.value;
+      }
+      const iconS = settings.find((s: any) => s.key === 'app_icon');
+      if (iconS && iconS.value) {
+        setAppIcon(iconS.value);
+        let favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+        if (favicon) favicon.href = iconS.value;
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    loadAppSettings();
+    const handleUpdate = () => loadAppSettings();
+    window.addEventListener('app_settings_updated', handleUpdate);
+    return () => window.removeEventListener('app_settings_updated', handleUpdate);
+  }, []);
   
   // Track open/closed state of accordions. Pesantren is open by default.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -110,16 +143,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
       icon: Building,
       items: [
         { 
-          id: 'scan', 
-          label: 'Absensi Sidik Jari', 
-          icon: Fingerprint,
-          badge: { type: 'live', text: 'Live' }
-        },
-        { 
           id: 'scan-wajah', 
           label: 'Absensi Wajah', 
           icon: Camera,
           badge: { type: 'live', text: 'AI' }
+        },
+        { 
+          id: 'scan', 
+          label: 'Absensi Sidik Jari', 
+          icon: Fingerprint,
+          badge: { type: 'live', text: 'Live' }
         },
         { 
           id: 'manual', 
@@ -146,6 +179,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
           id: 'settings', 
           label: 'Pengaturan', 
           icon: SettingsIcon 
+        },
+        { 
+          id: 'logout', 
+          label: 'Keluar (Logout)', 
+          icon: LogOut 
         },
       ]
     },
@@ -198,12 +236,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onOpe
       {/* Brand Header */}
       <div className="sidebar-header">
         <div className="sidebar-brand">
-          <div className="brand-logo" title="PP. Al-Hamid Absensi">
-            <Fingerprint size={24} />
+          <div className="brand-logo" title={appTitle}>
+            {appIcon ? (
+              <img src={appIcon} alt="App Icon" style={{ width: '100%', height: '100%', borderRadius: '12px', objectFit: 'cover' }} />
+            ) : (
+              <Fingerprint size={24} />
+            )}
           </div>
           <div className="brand-info">
-            <h2>ABSENSI SHOLAT</h2>
-            <p>PP. Al-Hamid</p>
+            <h2>MASTER ABSENSI</h2>
+            <p>Alhamid Cintamulya</p>
           </div>
         </div>
 
