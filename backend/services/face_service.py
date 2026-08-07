@@ -44,6 +44,17 @@ def init_face_analyzer():
         return None
 
 
+def get_cv2():
+    global cv2
+    if cv2 is None:
+        try:
+            import cv2 as _cv2
+            cv2 = _cv2
+        except ImportError:
+            cv2 = None
+    return cv2
+
+
 def decode_base64_image(image_base64: str) -> Optional[np.ndarray]:
     """Decode base64 string to BGR OpenCV image numpy array."""
     if not image_base64:
@@ -53,12 +64,14 @@ def decode_base64_image(image_base64: str) -> Optional[np.ndarray]:
             image_base64 = image_base64.split(",")[1]
         image_bytes = base64.b64decode(image_base64)
         nparr = np.frombuffer(image_bytes, np.uint8)
-        if cv2 is not None:
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        _cv2 = get_cv2()
+        if _cv2 is not None:
+            img = _cv2.imdecode(nparr, _cv2.IMREAD_COLOR)
             return img
         elif Image is not None:
             pil_img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-            return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR) if cv2 else np.array(pil_img)
+            arr = np.array(pil_img)
+            return arr[:, :, ::-1] if arr.ndim == 3 else arr
     except Exception as e:
         logger.error(f"Error decoding base64 image: {e}")
         return None
@@ -79,7 +92,7 @@ def extract_face_embedding(img_bgr: np.ndarray) -> Tuple[Optional[List[float]], 
         try:
             faces = app.get(img_bgr)
             if len(faces) == 0:
-                return None, "Tidak ada wajah yang terdeteksi pada gambar"
+                return None, "Tidak ada wajah yang terdeteksi pada gambar. Pastikan pencahayaan cukup dan posisi wajah menghadap ke depan."
             
             # Select the largest face if multiple faces are present
             largest_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
@@ -88,29 +101,42 @@ def extract_face_embedding(img_bgr: np.ndarray) -> Tuple[Optional[List[float]], 
         except Exception as e:
             logger.error(f"InsightFace extraction error: {e}")
 
-    # Fallback embedding extraction using OpenCV grayscale & resized feature vector
-    # if InsightFace model files are downloading or not present
+    # Fallback embedding extraction using OpenCV or NumPy grayscale feature vector
     try:
-        if cv2 is not None:
-            gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-            # Detect face with Haar Cascade if present
-            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-            face_cascade = cv2.CascadeClassifier(cascade_path)
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(60, 60))
-            
-            if len(faces) > 0:
-                x, y, w, h = sorted(faces, key=lambda b: b[2]*b[3], reverse=True)[0]
-                face_roi = gray[y:y+h, x:x+w]
-            else:
+        _cv2 = get_cv2()
+        if _cv2 is not None:
+            gray = _cv2.cvtColor(img_bgr, _cv2.COLOR_BGR2GRAY)
+            cascade_path = _cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            try:
+                face_cascade = _cv2.CascadeClassifier(cascade_path)
+                faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(60, 60))
+                if len(faces) > 0:
+                    x, y, w, h = sorted(faces, key=lambda b: b[2]*b[3], reverse=True)[0]
+                    face_roi = gray[y:y+h, x:x+w]
+                else:
+                    face_roi = gray
+            except Exception:
                 face_roi = gray
-            
-            resized = cv2.resize(face_roi, (32, 32)).flatten().astype(np.float32)
-            norm_vec = resized / (np.linalg.norm(resized) + 1e-6)
-            # Pad or repeat to 512 length to keep consistent vector space
-            padded_vec = np.pad(norm_vec, (0, 512 - len(norm_vec)), 'wrap')
-            return padded_vec.tolist(), None
+
+            resized = _cv2.resize(face_roi, (32, 32)).flatten().astype(np.float32)
         else:
-            return None, "OpenCV tidak tersedia"
+            # Pure PIL/NumPy grayscale and downsampling fallback
+            if img_bgr.ndim == 3:
+                gray = np.dot(img_bgr[..., :3], [0.114, 0.587, 0.299]) # BGR to Gray
+            else:
+                gray = img_bgr
+            
+            # Simple 32x32 block average resizing using numpy
+            h, w = gray.shape[:2]
+            h_step = max(1, h // 32)
+            w_step = max(1, w // 32)
+            resized = gray[::h_step, ::w_step][:32, :32].flatten().astype(np.float32)
+            if len(resized) < 1024:
+                resized = np.pad(resized, (0, 1024 - len(resized)), 'constant')
+
+        norm_vec = resized / (np.linalg.norm(resized) + 1e-6)
+        padded_vec = np.pad(norm_vec, (0, max(0, 512 - len(norm_vec))), 'wrap')[:512]
+        return padded_vec.tolist(), None
     except Exception as e:
         logger.error(f"Fallback face extraction error: {e}")
         return None, f"Gagal mengekstrak fitur wajah: {str(e)}"
