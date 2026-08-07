@@ -274,7 +274,7 @@ export const AbsensiWajah: React.FC = () => {
     }
   }, []);
 
-  // Multi-engine Text to Speech (HTML5 Audio Online TTS + Browser SpeechSynthesis Fallback)
+  // Multi-engine Text to Speech (Backend gTTS MP3 Stream + Browser SpeechSynthesis Fallback)
   const speakText = (text: string) => {
     if (!soundEnabled) return;
 
@@ -283,19 +283,17 @@ export const AbsensiWajah: React.FC = () => {
 
     unlockAudio();
 
-    // 2. Try Online Human Voice Audio (Google TTS API)
-    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=id&client=tw-ob`;
-    const audio = new Audio(ttsUrl);
+    // 2. Play Backend Served Indonesian Voice MP3 (/api/tts)
+    const backendTtsUrl = `/api/tts?text=${encodeURIComponent(text)}`;
+    const audio = new Audio(backendTtsUrl);
     audio.volume = 1.0;
 
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
-        console.warn('Online TTS play failed, trying fallback SpeechSynthesis:', err);
+        console.warn('Backend TTS play failed, trying browser SpeechSynthesis:', err);
         fallbackSpeechSynthesis(text);
       });
-    } else {
-      fallbackSpeechSynthesis(text);
     }
   };
 

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from .database import init_db
-from .routers import academic_years, santri, fingerprint, face, attendance, rekap, whatsapp, settings
+from .routers import academic_years, santri, fingerprint, face, attendance, rekap, whatsapp, settings, tts
 import os
 
 @asynccontextmanager
@@ -79,6 +79,7 @@ app.include_router(attendance.router)
 app.include_router(rekap.router)
 app.include_router(whatsapp.router)
 app.include_router(settings.router)
+app.include_router(tts.router)
 
 @app.get("/")
 def read_root():
