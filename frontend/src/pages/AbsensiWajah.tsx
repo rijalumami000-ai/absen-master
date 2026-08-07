@@ -251,6 +251,29 @@ export const AbsensiWajah: React.FC = () => {
     }
   };
 
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  // Preload TTS voices for Mobile Android & iOS
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+
+    const loadVoices = () => {
+      try {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices && voices.length > 0) {
+          setAvailableVoices(voices);
+        }
+      } catch (e) {
+        console.warn('Load voices error:', e);
+      }
+    };
+
+    loadVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
+
   // Text to Speech Audio Feedback
   const speakText = (text: string) => {
     if (!soundEnabled) return;
@@ -259,24 +282,45 @@ export const AbsensiWajah: React.FC = () => {
     playSuccessChime();
 
     if (!('speechSynthesis' in window)) return;
+
     try {
       unlockAudio();
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'id-ID';
-      utterance.rate = 1.0;
-      utterance.pitch = 1.1;
 
-      // Select Indonesian voice if available on Android/iOS
-      const voices = window.speechSynthesis.getVoices();
-      if (voices && voices.length > 0) {
-        const idVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID') || v.name.toLowerCase().includes('indonesia'));
-        if (idVoice) {
-          utterance.voice = idVoice;
-        }
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
       }
 
-      window.speechSynthesis.speak(utterance);
+      // Small delay prevents Android Chrome from dropping the speech request after cancel
+      setTimeout(() => {
+        try {
+          if ('speechSynthesis' in window && window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
+
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'id-ID';
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.volume = 1.0;
+
+          // Select Indonesian voice if available on Android/iOS
+          const voices = availableVoices.length > 0 ? availableVoices : window.speechSynthesis.getVoices();
+          if (voices && voices.length > 0) {
+            const idVoice = voices.find(v => 
+              v.lang.toLowerCase().includes('id') || 
+              v.lang.toLowerCase().includes('ind') || 
+              v.name.toLowerCase().includes('indonesia')
+            );
+            if (idVoice) {
+              utterance.voice = idVoice;
+            }
+          }
+
+          window.speechSynthesis.speak(utterance);
+        } catch (innerErr) {
+          console.error('Speech synthesis inner error:', innerErr);
+        }
+      }, 150);
     } catch (e) {
       console.error('Speech synthesis error:', e);
     }
