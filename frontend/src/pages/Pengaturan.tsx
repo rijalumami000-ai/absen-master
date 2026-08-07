@@ -9,7 +9,9 @@ import {
   EyeOff,
   Building,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Smartphone,
+  Download
 } from 'lucide-react';
 import { settingsService } from '../services/api';
 import { AlertModal } from '../components/AlertModal';
@@ -315,6 +317,44 @@ export const Pengaturan: React.FC = () => {
                 </button>
               </div>
             </div>
+
+          {/* Mobile App Release Download Card */}
+          <div className="card">
+            <h3 className="card-title">
+              <Smartphone size={18} color="var(--accent-primary)" />
+              Aplikasi Mobile Android (APK Release)
+            </h3>
+            
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>
+              Unduh installer resmi (.APK) versi produksi terbaru untuk di-install pada Smartphone atau Tablet Android pengurus/santri.
+            </p>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', backgroundColor: 'var(--bg-card)', padding: '16px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Smartphone size={24} color="#10b981" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>MASTER ABSENSI Mobile v1.0.0</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Format .APK • Android Native (Kotlin)</div>
+              </div>
+              <a
+                href="/app-debug.apk"
+                download="MASTER_ABSENSI_v1.0.0.apk"
+                className="btn btn-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}
+              >
+                <Download size={16} /> Unduh APK
+              </a>
+            </div>
+          </div>
           </div>
 
           {/* WhatsApp settings */}
