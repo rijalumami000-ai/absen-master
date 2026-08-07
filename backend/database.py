@@ -59,7 +59,7 @@ async def init_db():
         await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS has_face_registered BOOLEAN DEFAULT FALSE"))
         await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS face_embedding TEXT"))
         await conn.execute(text("ALTER TABLE santri ADD COLUMN IF NOT EXISTS face_registered_at TIMESTAMP"))
-        await conn.execute(text("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS face_confidence DOUBLE PRECISION"))
+        await conn.execute(text("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS face_confidence INTEGER"))
         await conn.execute(text("ALTER TABLE academic_years ADD COLUMN IF NOT EXISTS sekolah_info_year_id INTEGER"))
         
         # Alter existing columns if they were created with conflicting types (e.g. BYTEA or TIMESTAMPTZ)
