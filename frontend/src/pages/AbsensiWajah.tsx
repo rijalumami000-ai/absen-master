@@ -274,36 +274,48 @@ export const AbsensiWajah: React.FC = () => {
     }
   }, []);
 
-  // Text to Speech Audio Feedback
+  // Multi-engine Text to Speech (HTML5 Audio Online TTS + Browser SpeechSynthesis Fallback)
   const speakText = (text: string) => {
     if (!soundEnabled) return;
 
-    // Play chime sound first (guaranteed audio feedback on mobile)
+    // 1. Play chime sound first
     playSuccessChime();
 
+    unlockAudio();
+
+    // 2. Try Online Human Voice Audio (Google TTS API)
+    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=id&client=tw-ob`;
+    const audio = new Audio(ttsUrl);
+    audio.volume = 1.0;
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        console.warn('Online TTS play failed, trying fallback SpeechSynthesis:', err);
+        fallbackSpeechSynthesis(text);
+      });
+    } else {
+      fallbackSpeechSynthesis(text);
+    }
+  };
+
+  const fallbackSpeechSynthesis = (text: string) => {
     if (!('speechSynthesis' in window)) return;
-
     try {
-      unlockAudio();
-
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
       }
-
-      // Small delay prevents Android Chrome from dropping the speech request after cancel
       setTimeout(() => {
         try {
-          if ('speechSynthesis' in window && window.speechSynthesis.paused) {
+          if (window.speechSynthesis.paused) {
             window.speechSynthesis.resume();
           }
-
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = 'id-ID';
           utterance.rate = 1.0;
           utterance.pitch = 1.0;
           utterance.volume = 1.0;
 
-          // Select Indonesian voice if available on Android/iOS
           const voices = availableVoices.length > 0 ? availableVoices : window.speechSynthesis.getVoices();
           if (voices && voices.length > 0) {
             const idVoice = voices.find(v => 
@@ -311,18 +323,15 @@ export const AbsensiWajah: React.FC = () => {
               v.lang.toLowerCase().includes('ind') || 
               v.name.toLowerCase().includes('indonesia')
             );
-            if (idVoice) {
-              utterance.voice = idVoice;
-            }
+            if (idVoice) utterance.voice = idVoice;
           }
-
           window.speechSynthesis.speak(utterance);
-        } catch (innerErr) {
-          console.error('Speech synthesis inner error:', innerErr);
+        } catch (e) {
+          console.error('SpeechSynthesis fallback error:', e);
         }
-      }, 150);
+      }, 100);
     } catch (e) {
-      console.error('Speech synthesis error:', e);
+      console.error('Fallback error:', e);
     }
   };
 
