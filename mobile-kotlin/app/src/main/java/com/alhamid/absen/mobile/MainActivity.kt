@@ -11,7 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.*
@@ -21,10 +21,11 @@ import com.alhamid.absen.mobile.ui.screens.HomeScreen
 import com.alhamid.absen.mobile.ui.screens.LoginScreen
 import com.alhamid.absen.mobile.ui.screens.ManualAttendanceScreen
 import com.alhamid.absen.mobile.ui.screens.RekapAttendanceScreen
+import com.alhamid.absen.mobile.ui.screens.SettingsScreen
 import com.alhamid.absen.mobile.ui.theme.AbsensiTheme
 import com.alhamid.absen.mobile.ui.viewmodel.AttendanceViewModel
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val viewModel: AttendanceViewModel by viewModels()
     private val ACTION_USB_PERMISSION = "com.alhamid.absen.mobile.USB_PERMISSION"
@@ -92,7 +93,11 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModel,
                         onNavigateToFaceScan = { currentScreen = "face" },
                         onNavigateToManual = { currentScreen = "manual" },
-                        onNavigateToRekap = { currentScreen = "rekap" }
+                        onNavigateToRekap = { currentScreen = "rekap" },
+                        onNavigateToSettings = { currentScreen = "settings" }
+                    )
+                    "settings" -> SettingsScreen(
+                        onNavigateBack = { currentScreen = "home" }
                     )
                     "face" -> FaceScanScreen(
                         onNavigateBack = { currentScreen = "home" }

@@ -1,5 +1,8 @@
 package com.alhamid.absen.mobile.ui.screens
 
+import android.content.Context
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -18,6 +22,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import com.alhamid.absen.mobile.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,15 +31,38 @@ import com.alhamid.absen.mobile.ui.theme.*
 fun LoginScreen(
     onLoginSuccess: () -> Unit
 ) {
+    val context = LocalContext.current
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
+    var isBiometricAvailable by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val biometricManager = BiometricManager.from(context)
+        val canAuth = biometricManager.canAuthenticate(
+            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK
+        )
+        isBiometricAvailable = (canAuth == BiometricManager.BIOMETRIC_SUCCESS)
+
+        val prefs = context.getSharedPreferences("alhamid_prefs", Context.MODE_PRIVATE)
+        val biometricEnabled = prefs.getBoolean("biometric_enabled", false)
+
+        if (isBiometricAvailable && biometricEnabled) {
+            triggerBiometricPrompt(
+                context = context,
+                onSuccess = onLoginSuccess,
+                onError = { msg -> errorMsg = msg }
+            )
+        }
+    }
 
     fun handleLogin() {
         if (username.trim() == "admin" && password == "alhamidku123") {
             errorMsg = null
+            // Save biometric preference automatically on first successful password login
+            val prefs = context.getSharedPreferences("alhamid_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("biometric_enabled", true).apply()
             onLoginSuccess()
         } else {
             errorMsg = "Username atau password superuser salah!"
@@ -67,8 +96,8 @@ fun LoginScreen(
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF818CF8).copy(alpha = 0.4f))
             ) {
                 Text(
-                    text = "🛡️ MASTER ABSENSI AL-HAMID",
-                    fontSize = 12.sp,
+                    text = "PP AL-HAMID CINTAMULYA",
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF818CF8),
                     letterSpacing = 1.sp,
@@ -139,7 +168,7 @@ fun LoginScreen(
                         onValueChange = { username = it },
                         placeholder = { Text("Masukkan username", color = Slate400) },
                         singleLine = true,
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF818CF8),
                             unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
                             focusedTextColor = Color.White,
@@ -171,7 +200,7 @@ fun LoginScreen(
                                 Text(text = if (showPassword) "👁️" else "🙈", fontSize = 16.sp)
                             }
                         },
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF818CF8),
                             unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
                             focusedTextColor = Color.White,
@@ -198,16 +227,82 @@ fun LoginScreen(
                             color = Color.White
                         )
                     }
+
+                    if (isBiometricAvailable) {
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedButton(
+                            onClick = {
+                                triggerBiometricPrompt(
+                                    context = context,
+                                    onSuccess = onLoginSuccess,
+                                    onError = { msg -> errorMsg = msg }
+                                )
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF818CF8)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("👆 ", fontSize = 18.sp)
+                                Text(
+                                    text = "Login Sidik Jari HP",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF818CF8)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "🔒 Secure Login • 🛡️ Protected Access • ⚡ Real-Time",
+                text = "🔒 Biometric Secured • 🛡️ Protected Access • ⚡ Real-Time",
                 fontSize = 11.sp,
                 color = Slate400
             )
         }
     }
+}
+
+private fun triggerBiometricPrompt(
+    context: Context,
+    onSuccess: () -> Unit,
+    onError: (String) -> Unit
+) {
+    val activity = context as? FragmentActivity ?: return
+    val executor = ContextCompat.getMainExecutor(context)
+
+    val callback = object : BiometricPrompt.AuthenticationCallback() {
+        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+            super.onAuthenticationSucceeded(result)
+            val prefs = context.getSharedPreferences("alhamid_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("biometric_enabled", true).apply()
+            onSuccess()
+        }
+
+        override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+            super.onAuthenticationError(errorCode, errString)
+            if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                onError("Autentikasi sidik jari gagal: $errString")
+            }
+        }
+    }
+
+    val promptInfo = BiometricPrompt.PromptInfo.Builder()
+        .setTitle("Verifikasi Sidik Jari HP")
+        .setSubtitle("Gunakan sidik jari perangkat Anda untuk masuk ke aplikasi Absensi Al-Hamid.")
+        .setNegativeButtonText("Gunakan Password")
+        .build()
+
+    val biometricPrompt = BiometricPrompt(activity, executor, callback)
+    biometricPrompt.authenticate(promptInfo)
 }

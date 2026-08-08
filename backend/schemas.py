@@ -163,6 +163,8 @@ class FaceScanResponse(BaseModel):
     santri_id: Optional[int] = None
     santri_name: Optional[str] = None
     room: Optional[str] = None
+    gender: Optional[str] = None
+    photo_url: Optional[str] = None
     confidence: float = 0.0  # percentage (e.g. 92.5)
     prayer_time: Optional[str] = None
     status: Optional[str] = None

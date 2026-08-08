@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, X, KeyRound, ShieldAlert } from 'lucide-react';
+import { settingsService } from '../services/api';
 
 interface PrayerPasswordModalProps {
   isOpen: boolean;
@@ -16,19 +17,28 @@ export const PrayerPasswordModal: React.FC<PrayerPasswordModalProps> = ({
 }) => {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Valid passwords: "123", "123456", "admin", "alhamid"
-    const validPasswords = ['123', '123456', 'admin', 'alhamid'];
-    if (validPasswords.includes(password.trim())) {
-      setErrorMessage(null);
-      setPassword('');
-      onConfirm();
-    } else {
-      setErrorMessage('Password salah! Hanya pengurus yang diizinkan merubah waktu sholat.');
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      const res = await settingsService.verifyPassword(password);
+      if (res.success) {
+        setErrorMessage(null);
+        setPassword('');
+        onConfirm();
+      } else {
+        setErrorMessage('Password keamanan salah! Hanya pengurus yang diizinkan merubah waktu sholat.');
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Password keamanan salah! Hanya pengurus yang diizinkan merubah waktu sholat.';
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 

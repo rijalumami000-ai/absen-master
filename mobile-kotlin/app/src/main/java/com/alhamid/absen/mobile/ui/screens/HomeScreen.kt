@@ -40,7 +40,8 @@ fun HomeScreen(
     viewModel: AttendanceViewModel,
     onNavigateToFaceScan: () -> Unit,
     onNavigateToManual: () -> Unit,
-    onNavigateToRekap: () -> Unit
+    onNavigateToRekap: () -> Unit,
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val timeString by viewModel.timeString.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
@@ -81,7 +82,7 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // TOP HEADER BAR: BRANDING & SYNC BUTTON
+            // TOP HEADER BAR: BRANDING, SETTINGS & SYNC BUTTON
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -113,30 +114,50 @@ fun HomeScreen(
                     )
                 }
 
-                // REFRESH / SYNC BUTTON
-                Surface(
-                    onClick = { viewModel.syncDatabase() },
-                    enabled = !isSyncing,
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.White.copy(alpha = 0.07f),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        Color.White.copy(alpha = 0.12f)
-                    ),
-                    modifier = Modifier.size(48.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        if (isSyncing) {
-                            CircularProgressIndicator(
-                                color = Emerald400,
-                                strokeWidth = 2.5.dp,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        } else {
-                            Text(
-                                text = "🔄",
-                                fontSize = 18.sp
-                            )
+                    // SETTINGS BUTTON
+                    Surface(
+                        onClick = onNavigateToSettings,
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White.copy(alpha = 0.07f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            Color.White.copy(alpha = 0.12f)
+                        ),
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(text = "⚙️", fontSize = 18.sp)
+                        }
+                    }
+
+                    // REFRESH / SYNC BUTTON
+                    Surface(
+                        onClick = { viewModel.syncDatabase() },
+                        enabled = !isSyncing,
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White.copy(alpha = 0.07f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            Color.White.copy(alpha = 0.12f)
+                        ),
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(
+                                    color = Emerald400,
+                                    strokeWidth = 2.5.dp,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            } else {
+                                Text(
+                                    text = "🔄",
+                                    fontSize = 18.sp
+                                )
+                            }
                         }
                     }
                 }

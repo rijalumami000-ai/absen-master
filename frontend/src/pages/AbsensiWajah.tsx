@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { faceService, attendanceService } from '../services/api';
 import { PrayerPasswordModal } from '../components/PrayerPasswordModal';
+import { ScanSuccessOverlay } from '../components/ScanSuccessOverlay';
 import { formatTimeOnly } from '../utils/formatters';
 
 interface AttendanceLog {
@@ -44,6 +45,24 @@ export const AbsensiWajah: React.FC = () => {
     message?: string;
     timestamp?: string;
   } | null>(null);
+
+  const [successOverlay, setSuccessOverlay] = useState<{
+    isOpen: boolean;
+    name: string;
+    room: string;
+    gender: string;
+    prayerTime: string;
+    time: string;
+    photoUrl?: string;
+  }>({
+    isOpen: false,
+    name: '',
+    room: '',
+    gender: '',
+    prayerTime: '',
+    time: '',
+    photoUrl: ''
+  });
 
   const [todayLogs, setTodayLogs] = useState<AttendanceLog[]>([]);
   const [faceCount, setFaceCount] = useState<number>(0);
@@ -393,13 +412,25 @@ export const AbsensiWajah: React.FC = () => {
 
         lastScannedSantriRef.current = { id: res.santri_id!, time: now };
 
+        const scanTimeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+
         setScanResult({
           matched: true,
           name: res.santri_name,
           room: res.room,
           confidence: res.confidence,
           message: res.message,
-          timestamp: new Date().toLocaleTimeString('id-ID')
+          timestamp: scanTimeStr
+        });
+
+        setSuccessOverlay({
+          isOpen: true,
+          name: res.santri_name || 'Santri',
+          room: res.room || '-',
+          gender: res.gender || '-',
+          prayerTime: prayerTime,
+          time: scanTimeStr,
+          photoUrl: res.photo_url || ''
         });
 
         // Trigger audio feedback
@@ -933,6 +964,18 @@ export const AbsensiWajah: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Interactive Face Scan Success Overlay */}
+      <ScanSuccessOverlay
+        isOpen={successOverlay.isOpen}
+        santriName={successOverlay.name}
+        room={successOverlay.room}
+        gender={successOverlay.gender}
+        prayerTime={successOverlay.prayerTime}
+        time={successOverlay.time}
+        photoUrl={successOverlay.photoUrl}
+        onClose={() => setSuccessOverlay(prev => ({ ...prev, isOpen: false }))}
+      />
 
       {/* Password Protection Modal for Prayer Time Switching */}
       <PrayerPasswordModal

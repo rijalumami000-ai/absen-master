@@ -19,12 +19,23 @@ data class FaceScanRequestDto(
 data class FaceScanResponseDto(
     val matched: Boolean,
     val message: String,
+    @SerializedName("santri_id") val santriId: Int? = null,
     @SerializedName("santri_name") val santriName: String? = null,
-    @SerializedName("santri_room") val santriRoom: String? = null,
-    @SerializedName("santri_gender") val santriGender: String? = null,
+    @SerializedName("room") val santriRoom: String? = null,
+    @SerializedName("gender") val santriGender: String? = null,
     @SerializedName("photo_url") val photoUrl: String? = null,
-    val time: String? = null,
+    @SerializedName("prayer_time") val prayerTime: String? = null,
+    @SerializedName("scanned_at") val scannedAt: String? = null,
     val confidence: Double? = null
+)
+
+data class VerifyPasswordRequestDto(
+    val password: String
+)
+
+data class VerifyPasswordResponseDto(
+    val success: Boolean,
+    val message: String? = null
 )
 
 interface ApiService {
@@ -38,8 +49,11 @@ interface ApiService {
     @POST("attendance/manual")
     suspend fun postAttendance(@Body request: AttendanceRequest): Response<Unit>
 
-    @POST("face/scan_face")
+    @POST("face/scan")
     suspend fun scanFace(@Body request: FaceScanRequestDto): Response<FaceScanResponseDto>
+
+    @POST("settings/verify-password")
+    suspend fun verifyPassword(@Body request: VerifyPasswordRequestDto): Response<VerifyPasswordResponseDto>
 
     companion object {
         private const val BASE_URL = "https://absen.alhamidcintamulya.my.id/api/"

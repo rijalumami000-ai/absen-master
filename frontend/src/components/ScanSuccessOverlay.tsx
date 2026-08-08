@@ -166,6 +166,7 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
             <div style={badgeContainerStyle}>
               <span style={badgeStyle}>Kamar: <strong>{room}</strong></span>
               <span style={badgeStyle}>Gender: <strong>{gender}</strong></span>
+              <span style={badgeStyle}>Waktu Foto: <strong>{time.includes('WIB') ? time : `${time} WIB`}</strong></span>
             </div>
           </div>
         </div>
