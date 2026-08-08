@@ -49,6 +49,10 @@ fun HomeScreen(
 
     val lastMatchedSantri by viewModel.lastMatchedSantri.collectAsState()
     val santriList by viewModel.santriList.collectAsState()
+    val allRegisteredSantri by viewModel.allRegisteredSantri.collectAsState()
+    val totalCount = remember(allRegisteredSantri, santriList) {
+        if (allRegisteredSantri.isNotEmpty()) allRegisteredSantri.size else santriList.size
+    }
     val activePrayer = viewModel.getActiveSholat()
 
     // Smooth pulse micro-animation for prayer badge card
@@ -356,7 +360,7 @@ fun HomeScreen(
                             ) {
                                 Text("TOTAL SANTRI", fontSize = 10.sp, color = Slate400, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("${santriList.size}", fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Black)
+                                Text("$totalCount", fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Black)
                             }
                         }
 

@@ -81,11 +81,23 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private var usbReaderJob: Job? = null
 
     init {
-        // Initialize Indonesian Text-to-Speech Engine
+        // Initialize Indonesian Text-to-Speech Engine with tablet support
         try {
             tts = TextToSpeech(application) { status ->
                 if (status == TextToSpeech.SUCCESS) {
-                    tts?.language = Locale("id", "ID")
+                    val res = tts?.setLanguage(Locale("id", "ID"))
+                    if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        tts?.language = Locale.getDefault()
+                    }
+                    try {
+                        val audioAttributes = android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                        tts?.setAudioAttributes(audioAttributes)
+                    } catch (e: Exception) {
+                        Log.e("AttendanceViewModel", "AudioAttributes set error", e)
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -349,9 +361,16 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun speakVoice(text: String) {
         try {
+            val toneGen = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 100)
+            toneGen.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 180)
+        } catch (e: Exception) {
+            Log.e("AttendanceViewModel", "Tone error", e)
+        }
+
+        try {
             tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "AbsenVoice")
         } catch (e: Exception) {
-            // Ignore speech failures
+            Log.e("AttendanceViewModel", "TTS Speak error", e)
         }
     }
 

@@ -32,15 +32,13 @@ export const ScanSuccessOverlay: React.FC<ScanSuccessOverlayProps> = ({
   const formatPhotoUrl = (url?: string) => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    if (url.startsWith('/sekolah-info-static/') || url.startsWith('/static/')) return url;
-    if (url.startsWith('sekolah-info-static/')) return `/${url}`;
-    if (url.startsWith('static/')) return `/${url}`;
-    if (url.startsWith('/uploads/')) return `/sekolah-info-static${url}`;
-    if (url.startsWith('uploads/')) return `/sekolah-info-static/${url}`;
-    if (url.startsWith('storage/')) return `/sekolah-info-static/${url.replace('storage/', '')}`;
-    if (url.startsWith('/storage/')) return `/sekolah-info-static/${url.replace('/storage/', '')}`;
-    if (url.startsWith('/')) return url;
-    return `/static/uploads/${url}`;
+    if (url.startsWith('data:image')) return url;
+    const clean = url.startsWith('/') ? url : `/${url}`;
+    if (clean.startsWith('/sekolah-info-static/')) return clean;
+    if (clean.startsWith('/static/')) return clean;
+    if (clean.startsWith('/uploads/')) return `/sekolah-info-static${clean}`;
+    if (clean.startsWith('/storage/')) return `/sekolah-info-static/${clean.replace('/storage/', '')}`;
+    return `/sekolah-info-static/uploads/${url.replace(/^\//, '')}`;
   };
 
   useEffect(() => {

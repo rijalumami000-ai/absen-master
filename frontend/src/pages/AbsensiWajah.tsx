@@ -397,35 +397,39 @@ export const AbsensiWajah: React.FC = () => {
         prayer_time: prayerTime
       });
 
-      if (res.matched && res.santri_name) {
+      if (res.matched) {
         const now = Date.now();
+        const santriName = res.santri_name || (res as any).name || 'Santri';
+        const santriId = res.santri_id || 0;
 
         // Anti duplicate spam check (3 seconds debounce per santri)
         if (
           lastScannedSantriRef.current &&
-          lastScannedSantriRef.current.id === res.santri_id &&
+          lastScannedSantriRef.current.id === santriId &&
           now - lastScannedSantriRef.current.time < 3000
         ) {
           setIsProcessingFrame(false);
           return;
         }
 
-        lastScannedSantriRef.current = { id: res.santri_id!, time: now };
+        lastScannedSantriRef.current = { id: santriId, time: now };
 
         const scanTimeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
 
         setScanResult({
           matched: true,
-          name: res.santri_name,
+          name: santriName,
           room: res.room,
           confidence: res.confidence,
           message: res.message,
-          timestamp: scanTimeStr
+          timestamp: scanTimeStr,
+          gender: res.gender,
+          photoUrl: res.photo_url
         });
 
         setSuccessOverlay({
           isOpen: true,
-          name: res.santri_name || 'Santri',
+          name: santriName,
           room: res.room || '-',
           gender: res.gender || '-',
           prayerTime: prayerTime,
@@ -434,7 +438,7 @@ export const AbsensiWajah: React.FC = () => {
         });
 
         // Trigger audio feedback
-        speakText(`${res.santri_name}, Hadir ${res.prayer_time}`);
+        speakText(`${santriName}, Hadir ${res.prayer_time || prayerTime}`);
       } else {
         setScanResult({
           matched: false,

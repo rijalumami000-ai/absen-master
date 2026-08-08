@@ -28,16 +28,28 @@ fun RekapAttendanceScreen(
     onBack: () -> Unit
 ) {
     val santriList by viewModel.santriList.collectAsState()
+    val allRegisteredSantri by viewModel.allRegisteredSantri.collectAsState()
+    val roomsList by viewModel.roomsList.collectAsState()
     val attendanceStates by viewModel.attendanceStates.collectAsState()
 
     var activePrayerTime by remember { mutableStateOf(viewModel.getActiveSholat()) }
     var selectedStatusFilter by remember { mutableStateOf("Semua") }
+    var selectedRoomFilter by remember { mutableStateOf("Semua Kamar") }
     var searchQuery by remember { mutableStateOf("") }
 
     var prayerDropdownOpen by remember { mutableStateOf(false) }
     var statusDropdownOpen by remember { mutableStateOf(false) }
+    var roomDropdownOpen by remember { mutableStateOf(false) }
 
     val statusOptions = listOf("Semua", "Hadir", "Sakit", "Izin", "Alfa", "Masbuq", "Haid", "Istihadhoh")
+    val roomOptions = remember(roomsList, allRegisteredSantri) {
+        val derived = if (roomsList.isNotEmpty()) roomsList else allRegisteredSantri.map { it.room }.distinct().filter { it.isNotBlank() }
+        listOf("Semua Kamar") + derived.sorted()
+    }
+
+    val displaySantriList = remember(allRegisteredSantri, santriList) {
+        if (allRegisteredSantri.isNotEmpty()) allRegisteredSantri else santriList
+    }
 
     // Stats calculations
     val totalHadir = remember(attendanceStates) { attendanceStates.values.count { it == "Hadir" } }
@@ -46,15 +58,16 @@ fun RekapAttendanceScreen(
     val totalAlfa = remember(attendanceStates) { attendanceStates.values.count { it == "Alfa" } }
     val totalHaid = remember(attendanceStates) { attendanceStates.values.count { it == "Haid" } }
 
-    val filteredSantri = remember(santriList, attendanceStates, selectedStatusFilter, searchQuery) {
-        santriList.filter { santri ->
+    val filteredSantri = remember(displaySantriList, attendanceStates, selectedStatusFilter, selectedRoomFilter, searchQuery) {
+        displaySantriList.filter { santri ->
             val status = attendanceStates[santri.id] ?: "Hadir"
             val matchesStatus = if (selectedStatusFilter == "Semua") true else status == selectedStatusFilter
+            val matchesRoom = if (selectedRoomFilter == "Semua Kamar") true else santri.room.equals(selectedRoomFilter, ignoreCase = true)
             val matchesQuery = if (searchQuery.isEmpty()) true else {
                 santri.name.contains(searchQuery, ignoreCase = true) ||
                 santri.room.contains(searchQuery, ignoreCase = true)
             }
-            matchesStatus && matchesQuery
+            matchesStatus && matchesRoom && matchesQuery
         }
     }
 
@@ -244,9 +257,10 @@ fun RekapAttendanceScreen(
                                 ) {
                                     Text(
                                         text = "🏷️ $selectedStatusFilter ▼",
-                                        fontSize = 12.sp,
+                                        fontSize = 11.sp,
                                         color = Color.White,
                                         fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
                                         modifier = Modifier.padding(8.dp)
                                     )
                                 }
@@ -260,6 +274,40 @@ fun RekapAttendanceScreen(
                                             onClick = {
                                                 selectedStatusFilter = st
                                                 statusDropdownOpen = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // ROOM FILTER
+                            Box(modifier = Modifier.weight(1f)) {
+                                Surface(
+                                    onClick = { roomDropdownOpen = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color.White.copy(alpha = 0.08f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "🚪 $selectedRoomFilter ▼",
+                                        fontSize = 11.sp,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        modifier = Modifier.padding(8.dp)
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = roomDropdownOpen,
+                                    onDismissRequest = { roomDropdownOpen = false }
+                                ) {
+                                    roomOptions.forEach { rm ->
+                                        DropdownMenuItem(
+                                            text = { Text(rm) },
+                                            onClick = {
+                                                selectedRoomFilter = rm
+                                                roomDropdownOpen = false
                                             }
                                         )
                                     }
