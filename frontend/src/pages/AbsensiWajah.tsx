@@ -41,6 +41,8 @@ export const AbsensiWajah: React.FC = () => {
     matched: boolean;
     name?: string;
     room?: string;
+    gender?: string;
+    photoUrl?: string;
     confidence?: number;
     message?: string;
     timestamp?: string;
