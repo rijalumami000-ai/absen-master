@@ -21,6 +21,10 @@ class AttendanceRepository(context: Context) {
         santriDao.getSantriFiltered(gender, room)
     }
 
+    suspend fun getAllSantri(): List<SantriEntity> = withContext(Dispatchers.IO) {
+        santriDao.getAllSantri()
+    }
+
     suspend fun getAllRegisteredSantri(): List<SantriEntity> = withContext(Dispatchers.IO) {
         santriDao.getAllRegisteredSantri()
     }

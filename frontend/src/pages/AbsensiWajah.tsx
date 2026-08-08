@@ -438,9 +438,6 @@ export const AbsensiWajah: React.FC = () => {
           time: scanTimeStr,
           photoUrl: res.photo_url || ''
         });
-
-        // Trigger audio feedback
-        speakText(`${santriName}, Hadir ${res.prayer_time || prayerTime}`);
       } else {
         setScanResult({
           matched: false,

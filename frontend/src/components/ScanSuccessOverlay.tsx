@@ -195,8 +195,9 @@ const overlayStyle: React.CSSProperties = {
 const cardStyle: React.CSSProperties = {
   background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', // Vibrant Emerald Gradient
   borderRadius: '28px',
-  width: '480px',
-  padding: '40px 32px',
+  width: '540px',
+  maxWidth: '92vw',
+  padding: '36px 28px',
   textAlign: 'center',
   boxShadow: '0 25px 50px -12px rgba(16, 185, 129, 0.45)',
   border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -204,39 +205,39 @@ const cardStyle: React.CSSProperties = {
 };
 
 const checkmarkContainerStyle: React.CSSProperties = {
-  width: '84px',
-  height: '84px',
+  width: '72px',
+  height: '72px',
   backgroundColor: 'rgba(255, 255, 255, 0.2)',
   borderRadius: '50%',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  margin: '0 auto 16px auto',
+  margin: '0 auto 12px auto',
   border: '4px solid rgba(255, 255, 255, 0.35)',
 };
 
 const statusTitleStyle: React.CSSProperties = {
   fontFamily: 'Outfit, sans-serif',
-  fontSize: '26px',
+  fontSize: '24px',
   fontWeight: 800,
   letterSpacing: '1px',
 };
 
 const profileBoxStyle: React.CSSProperties = {
   backgroundColor: '#ffffff',
-  borderRadius: '20px',
-  padding: '24px 20px',
+  borderRadius: '22px',
+  padding: '20px 18px',
   display: 'flex',
   alignItems: 'center',
-  gap: '20px',
-  marginTop: '24px',
+  gap: '18px',
+  marginTop: '20px',
   textAlign: 'left',
   boxShadow: '0 12px 25px -4px rgba(0, 0, 0, 0.15)',
 };
 
 const avatarStyle: React.CSSProperties = {
-  width: '110px',
-  height: '110px',
+  width: '180px',
+  height: '180px',
   backgroundColor: '#e0e7ff',
   borderRadius: '20px',
   display: 'flex',

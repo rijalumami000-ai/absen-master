@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -488,12 +489,13 @@ fun FaceScanScreen(
                             AsyncImage(
                                 model = formattedPhoto,
                                 contentDescription = result.santriName,
+                                contentScale = ContentScale.Crop,
                                 modifier = Modifier
-                                    .size(110.dp)
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .border(3.dp, Color(0xFF10B981), RoundedCornerShape(20.dp))
+                                    .size(190.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .border(4.dp, Color(0xFF10B981), RoundedCornerShape(24.dp))
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(18.dp))
                         }
 
                         Text(

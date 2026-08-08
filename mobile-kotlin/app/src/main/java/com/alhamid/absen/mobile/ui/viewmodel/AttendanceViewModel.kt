@@ -267,7 +267,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             val list = repository.getSantriFiltered(_selectedGender.value, _selectedRoom.value)
             _santriList.value = list
 
-            val allRegistered = repository.getAllRegisteredSantri()
+            val allRegistered = repository.getAllSantri()
             _allRegisteredSantri.value = allRegistered
 
             val states = _attendanceStates.value.toMutableMap()

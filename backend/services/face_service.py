@@ -92,7 +92,7 @@ def extract_face_embedding(img_bgr: np.ndarray) -> Tuple[Optional[List[float]], 
     if app is not None and _insightface_available:
         try:
             faces = app.get(img_bgr)
-            # Try auto-contrast enhancement if no face detected in low light / accessories
+            # Try auto-contrast enhancement if no face detected in low light
             if len(faces) == 0 and _cv2 is not None:
                 enhanced = _cv2.convertScaleAbs(img_bgr, alpha=1.3, beta=20)
                 faces = app.get(enhanced)
@@ -101,39 +101,42 @@ def extract_face_embedding(img_bgr: np.ndarray) -> Tuple[Optional[List[float]], 
                 largest_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
                 norm_embedding = largest_face.embedding / np.linalg.norm(largest_face.embedding)
                 return norm_embedding.tolist(), None
+            else:
+                return None, "Wajah tidak terdeteksi pada kamera."
         except Exception as e:
             logger.error(f"InsightFace extraction error: {e}")
 
-    # Fallback embedding extraction using OpenCV or NumPy grayscale feature vector on central ROI
+    # Fallback embedding extraction using OpenCV Haar Cascade validation
     try:
-        h, w = img_bgr.shape[:2]
-        # Focus on central 70% region (where face is positioned in oval frame)
-        cy_min, cy_max = int(h * 0.15), int(h * 0.85)
-        cx_min, cx_max = int(w * 0.15), int(w * 0.85)
-        center_roi = img_bgr[cy_min:cy_max, cx_min:cx_max]
+        if _cv2 is None:
+            return None, "Wajah tidak terdeteksi pada kamera."
 
-        if _cv2 is not None:
-            gray = _cv2.cvtColor(center_roi, _cv2.COLOR_BGR2GRAY)
-            resized = _cv2.resize(gray, (32, 32)).flatten().astype(np.float32)
-        else:
-            if center_roi.ndim == 3:
-                gray = np.dot(center_roi[..., :3], [0.114, 0.587, 0.299])
-            else:
-                gray = center_roi
+        gray_full = _cv2.cvtColor(img_bgr, _cv2.COLOR_BGR2GRAY)
+        
+        # Verify face existence via Haar Cascade
+        cascade_path = _cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        if os.path.exists(cascade_path):
+            face_cascade = _cv2.CascadeClassifier(cascade_path)
+            detected_faces = face_cascade.detectMultiScale(gray_full, scaleFactor=1.1, minNeighbors=4, minSize=(60, 60))
+            if len(detected_faces) == 0:
+                return None, "Wajah tidak terdeteksi pada kamera."
             
-            rh, rw = gray.shape[:2]
-            h_step = max(1, rh // 32)
-            w_step = max(1, rw // 32)
-            resized = gray[::h_step, ::w_step][:32, :32].flatten().astype(np.float32)
-            if len(resized) < 1024:
-                resized = np.pad(resized, (0, 1024 - len(resized)), 'constant')
+            # Crop to largest detected face
+            x, y, w, h = max(detected_faces, key=lambda b: b[2] * b[3])
+            face_roi = gray_full[y:y+h, x:x+w]
+        else:
+            h, w = img_bgr.shape[:2]
+            cy_min, cy_max = int(h * 0.20), int(h * 0.80)
+            cx_min, cx_max = int(w * 0.20), int(w * 0.80)
+            face_roi = gray_full[cy_min:cy_max, cx_min:cx_max]
 
+        resized = _cv2.resize(face_roi, (32, 32)).flatten().astype(np.float32)
         norm_vec = resized / (np.linalg.norm(resized) + 1e-6)
         padded_vec = np.pad(norm_vec, (0, max(0, 512 - len(norm_vec))), 'wrap')[:512]
         return padded_vec.tolist(), None
     except Exception as e:
         logger.error(f"Fallback face extraction error: {e}")
-        return None, f"Gagal mengekstrak fitur wajah: {str(e)}"
+        return None, f"Wajah tidak terdeteksi: {str(e)}"
 
 
 def compute_cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
