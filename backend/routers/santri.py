@@ -115,7 +115,10 @@ async def sync_sekolah_info_internal(db: AsyncSession, sekolah_db: AsyncSession)
             # Update info, but DO NOT overwrite fingerprint_id or fingerprint_template
             existing_student.name = name
             existing_student.gender = gender_mapped
-            existing_student.room = room_mapped
+            if room and room.strip():
+                existing_student.room = room.strip()
+            elif not existing_student.room:
+                existing_student.room = "Tanpa Kamar"
             existing_student.parent_phone = phone_mapped
             existing_student.mother_name = mother_name
             existing_student.photo_url = photo_url

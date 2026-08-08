@@ -11,6 +11,9 @@ from ..services.sse import sse_manager
 from datetime import datetime, date, timezone, timedelta
 from typing import List, Optional
 
+# WIB = UTC+7
+WIB = timezone(timedelta(hours=7))
+
 router = APIRouter(prefix="/api/fingerprint", tags=["Fingerprint"])
 
 # Global memory state for current enrollment session
@@ -144,7 +147,7 @@ async def scan_fingerprint(data: FingerprintScanRequest, db: AsyncSession = Depe
     # Determine prayer time if not sent by bridge
     prayer_time = data.prayer_time
     if not prayer_time:
-        hour = datetime.now().hour
+        hour = datetime.now(WIB).hour
         if 4 <= hour < 6:
             prayer_time = "Subuh"
         elif 11 <= hour < 14:
@@ -158,7 +161,7 @@ async def scan_fingerprint(data: FingerprintScanRequest, db: AsyncSession = Depe
         else:
             prayer_time = "Subuh" # Fallback default
             
-    today = date.today()
+    today = datetime.now(WIB).date()
     
     # Check if already checked in
     att_res = await db.execute(
@@ -173,7 +176,7 @@ async def scan_fingerprint(data: FingerprintScanRequest, db: AsyncSession = Depe
     if existing_att:
         existing_att.status = "Hadir"
         existing_att.method = "Fingerprint"
-        existing_att.scanned_at = datetime.utcnow() + timedelta(hours=7)
+        existing_att.scanned_at = datetime.now(WIB).replace(tzinfo=None)
         await db.commit()
     else:
         # Create new attendance record
@@ -183,7 +186,7 @@ async def scan_fingerprint(data: FingerprintScanRequest, db: AsyncSession = Depe
             prayer_time=prayer_time,
             status="Hadir",
             method="Fingerprint",
-            scanned_at=datetime.utcnow() + timedelta(hours=7),
+            scanned_at=datetime.now(WIB).replace(tzinfo=None),
             academic_year_id=active_year.id
         )
         db.add(new_att)
@@ -222,7 +225,7 @@ async def scan_fingerprint(data: FingerprintScanRequest, db: AsyncSession = Depe
         "photo_url": formatted_photo,
         "prayer_time": prayer_time,
         "status": status_str,
-        "time": datetime.now().strftime("%H:%M:%S")
+        "time": datetime.now(WIB).strftime("%H:%M:%S")
     })
     
     return {
@@ -287,7 +290,7 @@ async def update_bridge_status(data: dict):
         bridge_state["enroll_samples"] = data["enroll_samples"]
     if "log" in data and data["log"]:
         # Prepend timestamp to log
-        time_str = datetime.now().strftime("%H:%M:%S")
+        time_str = datetime.now(WIB).strftime("%H:%M:%S")
         log_entry = f"[{time_str}] {data['log']}"
         bridge_state["logs"].append(log_entry)
         if len(bridge_state["logs"]) > 50:

@@ -137,9 +137,18 @@ fun FaceScanScreen(
     var ttsEngine by remember { mutableStateOf<TextToSpeech?>(null) }
 
     DisposableEffect(context) {
-        val tts = TextToSpeech(context) { status ->
+        var tts: TextToSpeech? = null
+        tts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                ttsEngine?.language = Locale("id", "ID")
+                tts?.language = Locale("id", "ID")
+                // Critical for tablet speaker output
+                try {
+                    val audioAttributes = android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                    tts?.setAudioAttributes(audioAttributes)
+                } catch (_: Exception) {}
             }
         }
         ttsEngine = tts
@@ -460,8 +469,8 @@ fun FaceScanScreen(
                     color = Color(0xFF0F172A),
                     border = androidx.compose.foundation.BorderStroke(2.dp, if (result.matched) Color(0xFF10B981) else Color(0xFFEF4444)),
                     modifier = Modifier
-                        .fillMaxWidth(0.90f)
-                        .padding(16.dp)
+                        .fillMaxWidth(0.95f)
+                        .padding(8.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -491,11 +500,11 @@ fun FaceScanScreen(
                                 contentDescription = result.santriName,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
-                                    .size(190.dp)
+                                    .size(220.dp)
                                     .clip(RoundedCornerShape(24.dp))
                                     .border(4.dp, Color(0xFF10B981), RoundedCornerShape(24.dp))
                             )
-                            Spacer(modifier = Modifier.height(18.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
                         }
 
                         Text(

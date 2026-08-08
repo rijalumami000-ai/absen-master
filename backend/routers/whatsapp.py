@@ -5,8 +5,11 @@ from ..database import get_db
 from ..models import Setting, Santri, Attendance, AcademicYear
 from ..schemas import WATemplateUpdate, WASendRequest, WAPreviewRequest
 from ..services.wa_sender import send_whatsapp, render_template
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from typing import List
+
+# WIB = UTC+7
+WIB = timezone(timedelta(hours=7))
 
 router = APIRouter(prefix="/api/wa", tags=["WhatsApp Laporan"])
 
@@ -90,7 +93,7 @@ async def preview_message(data: WAPreviewRequest, db: AsyncSession = Depends(get
     if not santri:
         raise HTTPException(404, "Santri tidak ditemukan")
 
-    target_date = date.today()
+    target_date = datetime.now(WIB).date()
     if data.date:
         try:
             target_date = datetime.strptime(data.date, "%Y-%m-%d").date()
@@ -158,7 +161,7 @@ async def send_bulk_whatsapp(data: WASendRequest, db: AsyncSession = Depends(get
         "Terimakasih.\n- Pesantren Al-Hamid"
     )
 
-    target_date = date.today()
+    target_date = datetime.now(WIB).date()
     if data.date:
         try:
             target_date = datetime.strptime(data.date, "%Y-%m-%d").date()

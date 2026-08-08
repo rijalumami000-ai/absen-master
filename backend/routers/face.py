@@ -1,7 +1,10 @@
 import json
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timezone, timedelta
 from typing import List, Optional
+
+# WIB = UTC+7
+WIB = timezone(timedelta(hours=7))
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,7 +45,7 @@ async def send_single_whatsapp_notification(santri: Santri, prayer_time: str, st
         )
 
         template = setting.value if setting else default_tpl
-        today_str = date.today().strftime("%d-%m-%Y")
+        today_str = datetime.now(WIB).strftime("%d-%m-%Y")
 
         variables = {
             "nama": santri.name,
@@ -176,7 +179,7 @@ async def scan_face(data: FaceScanRequest, db: AsyncSession = Depends(get_db)):
     if not santri:
         return FaceScanResponse(matched=False, message="Data santri terdeteksi namun tidak ditemukan.")
 
-    today_date = date.today()
+    today_date = datetime.now(WIB).date()
     confidence_pct = round(similarity * 100, 1)
 
     # 6. Check existing attendance record
@@ -205,7 +208,7 @@ async def scan_face(data: FaceScanRequest, db: AsyncSession = Depends(get_db)):
         )
 
     # 7. Create new Attendance record
-    now_dt = datetime.now()
+    now_dt = datetime.now(WIB)
     new_att = Attendance(
         santri_id=santri.id,
         date=today_date,
@@ -213,7 +216,7 @@ async def scan_face(data: FaceScanRequest, db: AsyncSession = Depends(get_db)):
         status="Hadir",
         method="Face",
         face_confidence=int(confidence_pct),
-        scanned_at=now_dt,
+        scanned_at=now_dt.replace(tzinfo=None),
         academic_year_id=active_ay.id
     )
 

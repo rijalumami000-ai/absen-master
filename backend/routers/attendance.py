@@ -10,6 +10,9 @@ from sse_starlette.sse import EventSourceResponse
 from datetime import date, datetime, timezone, timedelta
 from typing import List, Optional
 
+# WIB = UTC+7
+WIB = timezone(timedelta(hours=7))
+
 router = APIRouter(prefix="/api/attendance", tags=["Attendance"])
 
 
@@ -19,7 +22,7 @@ async def get_today_attendance(
     db: AsyncSession = Depends(get_db),
 ):
     """Retrieve today's attendance logs for the dashboard feed."""
-    today = date.today()
+    today = datetime.now(WIB).date()
     query = (
         select(Attendance, Santri.name, Santri.gender, Santri.room)
         .join(Santri, Attendance.santri_id == Santri.id)
@@ -60,7 +63,7 @@ async def save_manual_attendance(data: AttendanceManualRequest, db: AsyncSession
     if not active_year:
         raise HTTPException(400, "Tahun ajaran aktif belum ditentukan. Hubungi admin.")
 
-    target_date = date.today()
+    target_date = datetime.now(WIB).date()
     if data.date:
         try:
             target_date = datetime.strptime(data.date, "%Y-%m-%d").date()

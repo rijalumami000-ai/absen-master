@@ -287,8 +287,9 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             if (success) {
                 val sdf = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
                 _lastSyncText.value = "Terakhir Sinkron: ${sdf.format(Date())}"
-                loadManualAttendanceData()
             }
+            // Always load data regardless of sync success (use cached DB data)
+            loadManualAttendanceData()
             _isSyncing.value = false
         }
     }

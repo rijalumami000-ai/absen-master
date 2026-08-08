@@ -7,10 +7,13 @@ import androidx.room.Query
 
 @Dao
 interface SantriDao {
-    @Query("SELECT * FROM santri")
+    @Query("SELECT * FROM santri ORDER BY name ASC")
     suspend fun getAllSantri(): List<SantriEntity>
 
-    @Query("SELECT * FROM santri WHERE gender = :gender AND (:room = '' OR room = :room)")
+    @Query("SELECT COUNT(*) FROM santri")
+    suspend fun getCountAll(): Int
+
+    @Query("SELECT * FROM santri WHERE gender = :gender AND (:room = '' OR room = :room) ORDER BY name ASC")
     suspend fun getSantriFiltered(gender: String, room: String): List<SantriEntity>
 
     @Query("SELECT DISTINCT room FROM santri WHERE room != '' ORDER BY room ASC")
